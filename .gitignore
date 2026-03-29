@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 pdfs/
-budget_data.db
+# budget_data.db  # committed — static H.4025 data
 ingestion.log
 *.db-shm
 *.db-wal
