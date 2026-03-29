@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+pdfs/
+budget_data.db
+ingestion.log
+*.db-shm
+*.db-wal
+node_modules/
+frontend/dist/
+.venv/
