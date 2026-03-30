@@ -1,79 +1,112 @@
-import { useState } from 'react'
-import AgencyExplorer from './components/AgencyExplorer'
-import ZBBSandbox from './components/ZBBSandbox'
-import ScenarioTab from './components/ScenarioTab'
+import { useState, useEffect } from 'react'
+import { api } from './api'
+import type { AgencySummary } from './types'
+import TopBar from './components/TopBar'
+import BottomStatusBar from './components/BottomStatusBar'
+import OverviewTab from './components/OverviewTab'
+import AgencyExplorerTab from './components/AgencyExplorerTab'
+import ZBBSandboxTab from './components/ZBBSandboxTab'
+import ScenariosTab from './components/ScenariosTab'
 import NavigatorTab from './components/NavigatorTab'
-import DataIntegrityBadge from './components/DataIntegrityBadge'
+import ReconciliationModal from './components/ReconciliationModal'
 
-type Tab = 'explorer' | 'sandbox' | 'scenario' | 'navigator'
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'explorer',  label: 'Agency Explorer' },
-  { id: 'sandbox',   label: 'ZBB Sandbox' },
-  { id: 'scenario',  label: 'Scenario Modeler' },
-  { id: 'navigator', label: 'Budget Navigator' },
-]
+type Tab = 'overview' | 'explorer' | 'sandbox' | 'scenarios' | 'navigator'
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('explorer')
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [showReconModal, setShowReconModal] = useState(false)
+  const [agencies, setAgencies] = useState<AgencySummary[]>([])
+  const [loadingAgencies, setLoadingAgencies] = useState(true)
+
+  // Cross-tab navigation state
+  const [explorerSection, setExplorerSection] = useState<string | undefined>()
+  const [sandboxSection, setSandboxSection] = useState<string | undefined>()
+
+  // Sandbox bottom bar state
+  const [sandboxActive, setSandboxActive] = useState(false)
+  const [sandboxAgency, setSandboxAgency] = useState('')
+  const [sandboxJustifiedCents, setSandboxJustifiedCents] = useState(0)
+  const [sandboxHasUnsaved, setSandboxHasUnsaved] = useState(false)
+
+  const presentMode = new URLSearchParams(window.location.search).get('present') === 'true'
+
+  useEffect(() => {
+    api.agencies()
+      .then(r => setAgencies(r.agencies))
+      .catch(console.error)
+      .finally(() => setLoadingAgencies(false))
+  }, [])
+
+  function navigateToExplorer(section: string) {
+    setExplorerSection(section)
+    setActiveTab('explorer')
+  }
+
+  function navigateToSandbox(section: string) {
+    setSandboxSection(section)
+    setActiveTab('sandbox')
+  }
+
+  function handleSandboxChange(active: boolean, agency: string, justifiedCents: number, hasUnsaved: boolean) {
+    setSandboxActive(active)
+    setSandboxAgency(agency)
+    setSandboxJustifiedCents(justifiedCents)
+    setSandboxHasUnsaved(hasUnsaved)
+  }
+
+  if (loadingAgencies) {
+    return (
+      <div className="app-shell">
+        <div className="loading" style={{ paddingTop: 80 }}>Loading Palmetto ZBB Suite…</div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {/* Header */}
-      <header style={{
-        background: 'var(--navy)',
-        borderBottom: '3px solid var(--gold)',
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        height: 56,
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-          <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 15, letterSpacing: '.04em' }}>
-            PALMETTO ZBB SUITE
-          </span>
-          <span style={{ color: 'rgba(255,255,255,.55)', fontSize: 10, letterSpacing: '.06em' }}>
-            SC GENERAL ASSEMBLY · FY2025-2026 · H.4025
-          </span>
-        </div>
+    <div className={`app-shell${presentMode ? ' present-mode' : ''}`}>
+      {!presentMode && (
+        <TopBar
+          activeTab={activeTab}
+          setActiveTab={(t) => setActiveTab(t as Tab)}
+          onOpenRecon={() => setShowReconModal(true)}
+          presentMode={presentMode}
+        />
+      )}
 
-        <nav style={{ display: 'flex', gap: 2, marginLeft: 24 }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                background: tab === t.id ? 'var(--gold)' : 'transparent',
-                color: tab === t.id ? 'var(--navy)' : 'rgba(255,255,255,.75)',
-                border: 'none',
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontWeight: tab === t.id ? 700 : 400,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'background .15s, color .15s',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-      </header>
+      <div className="tab-content">
+        {activeTab === 'overview' && (
+          <OverviewTab agencies={agencies} onNavigateToAgency={navigateToExplorer} />
+        )}
+        {activeTab === 'explorer' && (
+          <AgencyExplorerTab
+            agencies={agencies}
+            initialSection={explorerSection}
+            onOpenInSandbox={navigateToSandbox}
+          />
+        )}
+        {activeTab === 'sandbox' && (
+          <ZBBSandboxTab
+            agencies={agencies}
+            initialSection={sandboxSection}
+            onSandboxChange={handleSandboxChange}
+          />
+        )}
+        {activeTab === 'scenarios' && (
+          <ScenariosTab agencies={agencies} />
+        )}
+        {activeTab === 'navigator' && (
+          <NavigatorTab />
+        )}
+      </div>
 
-      {/* Main content */}
-      <main style={{ padding: '24px 24px 80px' }}>
-        {tab === 'explorer'  && <AgencyExplorer />}
-        {tab === 'sandbox'   && <ZBBSandbox />}
-        {tab === 'scenario'  && <ScenarioTab />}
-        {tab === 'navigator' && <NavigatorTab />}
-      </main>
+      <BottomStatusBar
+        sandboxActive={sandboxActive}
+        sandboxAgency={sandboxAgency}
+        justifiedCents={sandboxJustifiedCents}
+        hasUnsaved={sandboxHasUnsaved}
+      />
 
-      {/* Always-visible data integrity badge */}
-      <DataIntegrityBadge />
-    </>
+      {showReconModal && <ReconciliationModal onClose={() => setShowReconModal(false)} />}
+    </div>
   )
 }
