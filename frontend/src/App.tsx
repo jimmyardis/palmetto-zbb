@@ -9,12 +9,14 @@ import ZBBSandboxTab from './components/ZBBSandboxTab'
 import ScenariosTab from './components/ScenariosTab'
 import NavigatorTab from './components/NavigatorTab'
 import ReconciliationModal from './components/ReconciliationModal'
+import HelpModal from './components/HelpModal'
 
 type Tab = 'overview' | 'explorer' | 'sandbox' | 'scenarios' | 'navigator'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showReconModal, setShowReconModal] = useState(false)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   const [agencies, setAgencies] = useState<AgencySummary[]>([])
   const [loadingAgencies, setLoadingAgencies] = useState(true)
 
@@ -35,6 +37,16 @@ export default function App() {
       .then(r => setAgencies(r.agencies))
       .catch(console.error)
       .finally(() => setLoadingAgencies(false))
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === '?') setShowHelpModal(v => !v)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   function navigateToExplorer(section: string) {
@@ -69,6 +81,7 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={(t) => setActiveTab(t as Tab)}
           onOpenRecon={() => setShowReconModal(true)}
+          onOpenHelp={() => setShowHelpModal(true)}
           presentMode={presentMode}
         />
       )}
@@ -107,6 +120,7 @@ export default function App() {
       />
 
       {showReconModal && <ReconciliationModal onClose={() => setShowReconModal(false)} />}
+      {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} />}
     </div>
   )
 }

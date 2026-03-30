@@ -6,6 +6,7 @@ interface Props {
   activeTab: string
   setActiveTab: (tab: string) => void
   onOpenRecon: () => void
+  onOpenHelp: () => void
   presentMode: boolean
 }
 
@@ -17,7 +18,7 @@ const TABS = [
   { id: 'navigator',  label: 'Navigator' },
 ]
 
-export default function TopBar({ activeTab, setActiveTab, onOpenRecon, presentMode }: Props) {
+export default function TopBar({ activeTab, setActiveTab, onOpenRecon, onOpenHelp, presentMode }: Props) {
   const [health, setHealth] = useState<HealthResponse | null>(null)
 
   useEffect(() => {
@@ -57,8 +58,9 @@ export default function TopBar({ activeTab, setActiveTab, onOpenRecon, presentMo
         ))}
       </div>
 
-      {/* Right: integrity badge */}
+      {/* Right: help + integrity badge */}
       <div className="topbar-right">
+        <button className="help-btn" onClick={onOpenHelp} title="User guide (?)">?</button>
         <button className="integrity-badge" onClick={onOpenRecon} title="View data reconciliation report">
           {badgeText}
         </button>
