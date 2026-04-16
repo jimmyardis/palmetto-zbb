@@ -28,7 +28,7 @@ export default function TopBar({ activeTab, setActiveTab, onOpenRecon, onOpenHel
   if (presentMode) return null
 
   const badgeText = health
-    ? `✓ ${health.database.data_rows.toLocaleString()} line items · ${health.reconciliation.recap_total} · H.4025`
+    ? `✓ H.4025: ${health.reconciliation.recurring_total ?? health.reconciliation.recap_total} + Surplus/CRF: ${health.reconciliation.nonrecurring_total ?? '$1,856,583,623'} · Grand Total: ${health.reconciliation.grand_total ?? '$41,017,004,490'} · Ratified May 28, 2025`
     : '✓ Loading…'
 
   return (
@@ -41,7 +41,7 @@ export default function TopBar({ activeTab, setActiveTab, onOpenRecon, onOpenHel
         </svg>
         <div>
           <div className="wordmark">PALMETTO ZBB SUITE</div>
-          <div className="subtext">SC General Assembly · FY2025-2026 · H.4025</div>
+          <div className="subtext">SC General Assembly · FY2025-2026 · H.4025 + H.4026 · v2.0</div>
         </div>
       </div>
 

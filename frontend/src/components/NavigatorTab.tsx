@@ -14,6 +14,8 @@ const EXAMPLES = [
   'What does the budget say about Medicaid managed care?',
   'Show me all provisos related to higher education tuition',
   'What are the Capital Reserve Fund requirements?',
+  'What justification was given for the Education Department\'s General Fund increase?',
+  'What nonrecurring funds were allocated and why?',
 ]
 
 // Annotate answer text: verified ✓ or unverified ⚠ for dollar figures
@@ -255,7 +257,7 @@ export default function NavigatorTab() {
                 <div className="card-header">
                   <h3>Source Citations</h3>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {result.citations.length} sources · H.4025 / tap1b.pdf
+                    {result.citations.length} sources · H.4025 / tap1b.pdf + Conference Report
                   </span>
                 </div>
                 <div className="card-body" style={{ padding: '12px 16px' }}>

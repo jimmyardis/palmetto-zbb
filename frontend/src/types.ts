@@ -186,7 +186,30 @@ export interface HealthResponse {
     status: string
     recap_total: string
     recap_gf: string
+    recurring_total: string
+    nonrecurring_total: string
+    grand_total: string
+    recurring_total_cents: number
+    nonrecurring_total_cents: number
+    grand_total_cents: number
   }
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────
+export interface SummaryResponse {
+  fiscal_year: string
+  recurring_total: number
+  recurring_total_display: string
+  surplus: number
+  surplus_display: string
+  capital_reserve_fund: number
+  capital_reserve_fund_display: string
+  nonrecurring_total: number
+  nonrecurring_total_display: string
+  grand_total: number
+  grand_total_display: string
+  source: string
+  ratified: string
 }
 
 // ── Sandbox export ────────────────────────────────────────────────────────

@@ -131,11 +131,13 @@ def apply_cut_integer(amount_cents: int, cut_pct: int) -> int:
 
 
 # ─── FastAPI app ─────────────────────────────────────────────────────────────
+CONFERENCE_NS = "fy2026-conference"
+
 app = FastAPI(
     title="Palmetto ZBB Suite",
     description="Zero-based budgeting platform for the SC General Assembly. "
                 "All dollar figures sourced verbatim from SQLite with traceable citations.",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 
@@ -167,6 +169,16 @@ def health():
             FROM line_items
         """).fetchone()
         meta = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM ingestion_meta").fetchall()}
+
+        # Nonrecurring total from SQLite — no LLM arithmetic
+        nr_row = conn.execute(
+            "SELECT SUM(total_funds) AS s FROM line_items WHERE fund_category='nonrecurring'"
+        ).fetchone()
+        nonrecurring_cents = nr_row["s"] or 0
+
+        recap_total_cents = int(meta.get("recap_total_cents", "0"))
+        grand_total_cents = recap_total_cents + nonrecurring_cents
+
         status["database"] = {
             "data_rows": row["data_rows"],
             "agencies": row["agencies"],
@@ -177,8 +189,14 @@ def health():
         }
         status["reconciliation"] = {
             "status": meta.get("reconciliation_status", "unknown"),
-            "recap_total": cents_to_dollars_str(int(meta.get("recap_total_cents", "0"))),
+            "recap_total": cents_to_dollars_str(recap_total_cents),
             "recap_gf": cents_to_dollars_str(int(meta.get("recap_gf_cents", "0"))),
+            "recurring_total": cents_to_dollars_str(recap_total_cents),
+            "nonrecurring_total": cents_to_dollars_str(nonrecurring_cents),
+            "grand_total": cents_to_dollars_str(grand_total_cents),
+            "recurring_total_cents": recap_total_cents,
+            "nonrecurring_total_cents": nonrecurring_cents,
+            "grand_total_cents": grand_total_cents,
         }
         conn.close()
     except Exception as e:
@@ -210,10 +228,11 @@ def health():
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.get("/agencies")
-def list_agencies():
+def list_agencies(include_nonrecurring: bool = False):
     """
     All agency sections with totals from SQLite. No LLM involved.
     Dollar figures are verbatim from Part IA, FY2025-2026 (H.4025).
+    ?include_nonrecurring=true appends the surplus and CRF fund entries.
     """
     conn = get_db()
     rows = conn.execute("""
@@ -254,6 +273,37 @@ def list_agencies():
                 "act": "H.4025, ratified May 28 2025",
             },
         })
+
+    if include_nonrecurring:
+        nr_rows = conn.execute("""
+            SELECT line_item_description, total_funds, general_funds, source_doc, page_number
+            FROM line_items
+            WHERE fund_category = 'nonrecurring'
+            ORDER BY page_number
+        """).fetchall()
+        conn.close()
+        for nr in nr_rows:
+            agencies.append({
+                "section_number": None,
+                "agency_name": nr["line_item_description"],
+                "total_funds_cents": nr["total_funds"],
+                "total_funds_display": cents_to_dollars_str(nr["total_funds"] or 0),
+                "general_funds_cents": nr["general_funds"],
+                "general_funds_display": cents_to_dollars_str(nr["general_funds"] or 0),
+                "other_funds_cents": 0,
+                "other_funds_display": "$0",
+                "line_item_count": 1,
+                "federal_match_items": 0,
+                "fund_category": "nonrecurring",
+                "citation": {
+                    "source_doc": nr["source_doc"],
+                    "page_number": nr["page_number"],
+                    "fiscal_year": FISCAL_YEAR,
+                    "act": "H.4025 + H.4026, ratified May 28 2025",
+                },
+            })
+    else:
+        conn.close()
 
     return {
         "fiscal_year": FISCAL_YEAR,
@@ -453,7 +503,7 @@ def ask(req: AskRequest):
     except Exception as e:
         raise HTTPException(502, f"Embedding failed: {e}")
 
-    # Retrieve from Pinecone
+    # Retrieve from Pinecone — query both fy2026-zia (Part IB) and fy2026-conference
     query_kwargs: dict = {
         "vector": emb,
         "top_k": req.top_k,
@@ -468,10 +518,24 @@ def ask(req: AskRequest):
     except Exception as e:
         raise HTTPException(502, f"Vector retrieval failed: {e}")
 
+    # Also query conference report namespace for adjustment justification context
+    conf_matches = []
+    try:
+        conf_results = idx.query(
+            vector=emb,
+            top_k=max(2, req.top_k // 2),
+            namespace=CONFERENCE_NS,
+            include_metadata=True,
+        )
+        conf_matches = conf_results.matches or []
+    except Exception:
+        pass  # Conference namespace may not exist yet — degrade gracefully
+
     # Filter and deduplicate chunks
     chunks = []
     seen_ids = set()
-    for match in results.matches:
+    all_matches = list(results.matches) + conf_matches
+    for match in all_matches:
         if match.score < MIN_SCORE:
             continue
         chunk_id = match.id
@@ -929,6 +993,68 @@ def sandbox_export(req: ExportRequest):
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# GET /summary
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.get("/summary")
+def get_summary():
+    """
+    Complete appropriations summary: H.4025 recurring + H.4026 nonrecurring.
+    All figures from SQLite. No LLM. No arithmetic beyond what SQLite provides.
+    """
+    conn = get_db()
+
+    meta = {r["key"]: r["value"] for r in conn.execute(
+        "SELECT key,value FROM ingestion_meta"
+    ).fetchall()}
+
+    # Authoritative recurring total from recapitulation (verbatim from tap1a.htm)
+    recap_total_cents = int(meta.get("recap_total_cents", "0"))
+
+    # Nonrecurring: pull each fund from SQLite
+    nr_rows = conn.execute("""
+        SELECT line_item_description, total_funds, source_doc, page_number
+        FROM line_items
+        WHERE fund_category = 'nonrecurring'
+        ORDER BY page_number
+    """).fetchall()
+    conn.close()
+
+    surplus_cents = 0
+    crf_cents     = 0
+    for row in nr_rows:
+        desc = (row["line_item_description"] or "").lower()
+        if "surplus" in desc:
+            surplus_cents = row["total_funds"]
+        elif "capital reserve" in desc:
+            crf_cents = row["total_funds"]
+
+    nonrecurring_cents = surplus_cents + crf_cents
+    grand_total_cents  = recap_total_cents + nonrecurring_cents
+
+    return {
+        "fiscal_year": FISCAL_YEAR,
+        "recurring_total": recap_total_cents // 100,
+        "recurring_total_display": cents_to_dollars_str(recap_total_cents),
+        "surplus": surplus_cents // 100,
+        "surplus_display": cents_to_dollars_str(surplus_cents),
+        "capital_reserve_fund": crf_cents // 100,
+        "capital_reserve_fund_display": cents_to_dollars_str(crf_cents),
+        "nonrecurring_total": nonrecurring_cents // 100,
+        "nonrecurring_total_display": cents_to_dollars_str(nonrecurring_cents),
+        "grand_total": grand_total_cents // 100,
+        "grand_total_display": cents_to_dollars_str(grand_total_cents),
+        "source": "H.4025 + H.4026 + Summary Control Document",
+        "ratified": "May 28, 2025",
+        "citation": {
+            "h4025": "SC FY2025-2026 Appropriations Act, Part IA (tap1a.htm)",
+            "h4026": "Capital Reserve Fund, Summary Control Document Line 80",
+            "surplus": "FY 2024-25 Projected Surplus, Summary Control Document Line 79",
+        },
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # GET /reconciliation
 # ════════════════════════════════════════════════════════════════════════════
 
@@ -1022,12 +1148,12 @@ else:
     def root():
         return {
             "service": "Palmetto ZBB Suite",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "fiscal_year": FISCAL_YEAR,
-            "source": "H.4025, SC FY2025-2026 Appropriations Act",
+            "source": "H.4025 + H.4026, SC FY2025-2026 Appropriations Act",
             "docs": "/docs",
-            "endpoints": ["/health", "/agencies", "/agency/{section_number}",
-                          "/ask", "/scenario", "/sandbox/export"],
+            "endpoints": ["/health", "/summary", "/agencies", "/agency/{section_number}",
+                          "/ask", "/scenario", "/sandbox/export", "/reconciliation"],
             "note": "Frontend not built. Run `npm run build` in the frontend/ directory.",
         }
 

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ResponsiveContainer, Treemap, BarChart, Bar, XAxis, YAxis,
-  Tooltip, Legend, Cell,
+  Tooltip, Legend,
 } from 'recharts'
-import type { AgencySummary } from '../types'
+import type { AgencySummary, SummaryResponse } from '../types'
 import { useAgencyStatus } from '../hooks/useAgencyStatus'
+import { api } from '../api'
 
 interface Props {
   agencies: AgencySummary[]
@@ -63,12 +64,14 @@ const STATUS_CYCLE = ['not-started', 'in-review', 'justified', 'flagged'] as con
 
 export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
   const [treemapMode, setTreemapMode] = useState<'total' | 'gf'>('total')
+  const [treemapScope, setTreemapScope] = useState<'recurring' | 'all'>('recurring')
   const [showAllAgencies, setShowAllAgencies] = useState(false)
   const { status, setStatus, getEmoji, summary } = useAgencyStatus()
+  const [budgetSummary, setBudgetSummary] = useState<SummaryResponse | null>(null)
 
-  const totalCents = agencies.reduce((s, a) => s + a.total_funds_cents, 0)
-  const gfCents    = agencies.reduce((s, a) => s + a.general_funds_cents, 0)
-  const otherCents = totalCents - gfCents
+  useEffect(() => {
+    api.summary().then(setBudgetSummary).catch(() => {})
+  }, [])
 
   const top20 = [...agencies]
     .sort((a, b) => b.total_funds_cents - a.total_funds_cents)
@@ -82,7 +85,7 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
     total: a.total_funds_cents / 100,
   }))
 
-  const treemapData = agencies.map(a => ({
+  const recurringTreemapData = agencies.map(a => ({
     name: a.agency_name,
     section: a.section_number,
     size: treemapMode === 'total' ? a.total_funds_cents : a.general_funds_cents,
@@ -90,6 +93,29 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
     other: a.other_funds_cents,
     gfPct: a.total_funds_cents > 0 ? a.general_funds_cents / a.total_funds_cents : 0,
   }))
+
+  const nonrecurringEntries = budgetSummary ? [
+    {
+      name: 'FY24-25 Surplus',
+      section: '',
+      size: budgetSummary.surplus * 100,
+      gf: budgetSummary.surplus * 100,
+      other: 0,
+      gfPct: 1,
+    },
+    {
+      name: 'Capital Reserve Fund',
+      section: '',
+      size: budgetSummary.capital_reserve_fund * 100,
+      gf: budgetSummary.capital_reserve_fund * 100,
+      other: 0,
+      gfPct: 1,
+    },
+  ] : []
+
+  const treemapData = treemapScope === 'all'
+    ? [...recurringTreemapData, ...nonrecurringEntries]
+    : recurringTreemapData
 
   const sessionAgencies = agencies.slice(0, showAllAgencies ? agencies.length : 10)
   const reviewed = Object.values(status).filter(v => v !== 'not-started').length + summary.justified
@@ -106,25 +132,49 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
       {/* Stat cards */}
       <div className="stat-grid">
         <div className="stat-card">
-          <div className="label">Total Budget</div>
-          <div className="value" style={{ fontSize: 22 }}>{fmtCents(totalCents)}</div>
-          <div className="sub">All funds — arithmetic from extracted data</div>
+          <div className="label">H.4025 Recurring</div>
+          <div className="value" style={{ fontSize: 20 }}>
+            {budgetSummary ? budgetSummary.recurring_total_display : '$39,160,420,867'}
+          </div>
+          <div className="sub">Agency appropriations · Part IA</div>
         </div>
         <div className="stat-card">
-          <div className="label">General Funds</div>
-          <div className="value" style={{ fontSize: 22 }}>{fmtCents(gfCents)}</div>
-          <div className="sub">{totalCents > 0 ? Math.round(gfCents * 100 / totalCents) : 0}% of total</div>
+          <div className="label">Surplus (Nonrecurring)</div>
+          <div className="value" style={{ fontSize: 20 }}>
+            {budgetSummary ? budgetSummary.surplus_display : '$1,486,799,741'}
+          </div>
+          <div className="sub">FY 2024-25 Projected Surplus · Line 79</div>
         </div>
         <div className="stat-card">
-          <div className="label">Other / Federal</div>
-          <div className="value" style={{ fontSize: 22 }}>{fmtCents(otherCents)}</div>
-          <div className="sub">{totalCents > 0 ? Math.round(otherCents * 100 / totalCents) : 0}% of total</div>
+          <div className="label">Capital Reserve Fund</div>
+          <div className="value" style={{ fontSize: 20 }}>
+            {budgetSummary ? budgetSummary.capital_reserve_fund_display : '$369,783,882'}
+          </div>
+          <div className="sub">H.4026 · One-time · Line 80</div>
         </div>
-        <div className="stat-card">
-          <div className="label">Agencies</div>
-          <div className="value">{agencies.length}</div>
-          <div className="sub">Part IA · H.4025</div>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--navy)' }}>
+          <div className="label">Grand Total</div>
+          <div className="value" style={{ fontSize: 20, color: 'var(--navy)' }}>
+            {budgetSummary ? budgetSummary.grand_total_display : '$41,017,004,490'}
+          </div>
+          <div className="sub">H.4025 + H.4026 · All appropriations</div>
         </div>
+      </div>
+
+      {/* Explanatory note */}
+      <div style={{
+        background: '#f0f4ff',
+        border: '1px solid #c5d0e8',
+        borderRadius: 6,
+        padding: '10px 16px',
+        fontSize: 12,
+        color: '#334',
+        marginBottom: 16,
+        lineHeight: 1.6,
+      }}>
+        <strong>Note:</strong> H.4025 covers recurring agency appropriations. The FY2024-25 Surplus and Capital Reserve
+        Fund (H.4026) are one-time nonrecurring funds appropriated separately.{' '}
+        Source: Conference Committee Summary Control Document, May 21, 2025.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
@@ -134,7 +184,7 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
           <div className="card">
             <div className="card-header">
               <h3>Budget Treemap — All Agencies</h3>
-              <div className="form-row" style={{ marginBottom: 0 }}>
+              <div className="form-row" style={{ marginBottom: 0, gap: 8 }}>
                 <button
                   className={`btn btn-sm ${treemapMode === 'total' ? 'btn-primary' : 'btn-ghost'}`}
                   onClick={() => setTreemapMode('total')}
@@ -143,6 +193,17 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
                   className={`btn btn-sm ${treemapMode === 'gf' ? 'btn-primary' : 'btn-ghost'}`}
                   onClick={() => setTreemapMode('gf')}
                 >GF Only</button>
+                <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' }} />
+                <button
+                  className={`btn btn-sm ${treemapScope === 'recurring' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setTreemapScope('recurring')}
+                  title="Show only H.4025 recurring agency appropriations"
+                >Recurring Only</button>
+                <button
+                  className={`btn btn-sm ${treemapScope === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setTreemapScope('all')}
+                  title="Include Surplus and Capital Reserve Fund"
+                >Include Nonrecurring</button>
               </div>
             </div>
             <div className="card-body" style={{ padding: '12px 20px' }}>

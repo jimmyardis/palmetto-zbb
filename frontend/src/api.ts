@@ -1,7 +1,7 @@
 import type {
   AgenciesResponse, AgencyDetail, AskResponse,
   ScenarioResponse, ReconciliationResponse, HealthResponse,
-  DecisionUnit,
+  SummaryResponse, DecisionUnit,
 } from './types'
 
 const BASE = ''  // relative URLs — same origin in production, Vite proxies in dev
@@ -21,6 +21,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () =>
     apiFetch<HealthResponse>('/health'),
+
+  summary: () =>
+    apiFetch<SummaryResponse>('/summary'),
 
   agencies: () =>
     apiFetch<AgenciesResponse>('/agencies'),

@@ -38,7 +38,7 @@ export default function ReconciliationModal({ onClose }: Props) {
           {data && (
             <>
               {/* Summary */}
-              <div className="stat-grid" style={{ marginBottom: 20 }}>
+              <div className="stat-grid" style={{ marginBottom: 12 }}>
                 <div className="stat-card">
                   <div className="label">Overall Status</div>
                   <div className="value" style={{ fontSize: 20 }}>
@@ -48,13 +48,14 @@ export default function ReconciliationModal({ onClose }: Props) {
                   </div>
                 </div>
                 <div className="stat-card">
-                  <div className="label">Grand Total (Recapitulation)</div>
-                  <div className="value" style={{ fontSize: 18 }}>{data.summary.recap_total_display}</div>
-                  <div className="sub">H.4025, FY{data.fiscal_year}</div>
+                  <div className="label">H.4025 Recurring</div>
+                  <div className="value" style={{ fontSize: 16 }}>{data.summary.recap_total_display}</div>
+                  <div className="sub">Agency appropriations · H.4025 Part IA</div>
                 </div>
                 <div className="stat-card">
                   <div className="label">General Fund Total</div>
-                  <div className="value" style={{ fontSize: 18 }}>{data.summary.recap_gf_display}</div>
+                  <div className="value" style={{ fontSize: 16 }}>{data.summary.recap_gf_display}</div>
+                  <div className="sub">Of recurring total</div>
                 </div>
                 <div className="stat-card">
                   <div className="label">Agencies</div>
@@ -67,9 +68,37 @@ export default function ReconciliationModal({ onClose }: Props) {
                 </div>
               </div>
 
+              {/* Nonrecurring funds breakdown */}
+              <div style={{
+                background: '#f8f9ff',
+                border: '1px solid #c5d0e8',
+                borderRadius: 6,
+                padding: '12px 16px',
+                marginBottom: 12,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 12,
+              }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Surplus (Nonrecurring · Line 79)</div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>$1,486,799,741</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>FY 2024-25 Projected Surplus</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Capital Reserve Fund (H.4026 · Line 80)</div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>$369,783,882</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>FY 2024-25 CRF</div>
+                </div>
+                <div style={{ borderLeft: '2px solid var(--navy)', paddingLeft: 12 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Grand Total (H.4025 + H.4026)</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)' }}>$41,017,004,490</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>All FY2025-26 appropriations</div>
+                </div>
+              </div>
+
               <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                All figures sourced verbatim from Part IA ({data.source_doc}).
-                Recapitulation totals are the authoritative per-agency figures from the enrolled bill.
+                H.4025 recurring figures sourced verbatim from Part IA ({data.source_doc}).
+                Nonrecurring funds (Surplus + CRF) sourced from the Conference Committee Summary Control Document, May 21 2025.
                 DB Sum is the independent sum of extracted line items — used to verify extraction accuracy.
               </div>
 
