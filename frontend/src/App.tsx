@@ -3,6 +3,7 @@ import { api } from './api'
 import type { AgencySummary } from './types'
 import TopBar from './components/TopBar'
 import BottomStatusBar from './components/BottomStatusBar'
+import DataIntegrityBadge from './components/DataIntegrityBadge'
 import OverviewTab from './components/OverviewTab'
 import AgencyExplorerTab from './components/AgencyExplorerTab'
 import ZBBSandboxTab from './components/ZBBSandboxTab'
@@ -80,10 +81,15 @@ export default function App() {
         <TopBar
           activeTab={activeTab}
           setActiveTab={(t) => setActiveTab(t as Tab)}
-          onOpenRecon={() => setShowReconModal(true)}
           onOpenHelp={() => setShowHelpModal(true)}
           presentMode={presentMode}
         />
+      )}
+
+      {!presentMode && (
+        <div className="integrity-subbar">
+          <DataIntegrityBadge />
+        </div>
       )}
 
       <div className="tab-content">

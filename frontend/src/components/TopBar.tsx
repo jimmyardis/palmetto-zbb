@@ -1,11 +1,6 @@
-import { useState, useEffect } from 'react'
-import { api } from '../api'
-import type { HealthResponse } from '../types'
-
 interface Props {
   activeTab: string
   setActiveTab: (tab: string) => void
-  onOpenRecon: () => void
   onOpenHelp: () => void
   presentMode: boolean
 }
@@ -18,18 +13,8 @@ const TABS = [
   { id: 'navigator',  label: 'Navigator' },
 ]
 
-export default function TopBar({ activeTab, setActiveTab, onOpenRecon, onOpenHelp, presentMode }: Props) {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-
-  useEffect(() => {
-    api.health().then(setHealth).catch(() => null)
-  }, [])
-
+export default function TopBar({ activeTab, setActiveTab, onOpenHelp, presentMode }: Props) {
   if (presentMode) return null
-
-  const badgeText = health
-    ? `✓ H.4025: ${health.reconciliation.recurring_total ?? health.reconciliation.recap_total} + Surplus/CRF: ${health.reconciliation.nonrecurring_total ?? '$1,856,583,623'} · Grand Total: ${health.reconciliation.grand_total ?? '$41,017,004,490'} · Ratified May 28, 2025`
-    : '✓ Loading…'
 
   return (
     <div className="topbar">
@@ -58,12 +43,9 @@ export default function TopBar({ activeTab, setActiveTab, onOpenRecon, onOpenHel
         ))}
       </div>
 
-      {/* Right: help + integrity badge */}
+      {/* Right: help */}
       <div className="topbar-right">
         <button className="help-btn" onClick={onOpenHelp} title="User guide (?)">?</button>
-        <button className="integrity-badge" onClick={onOpenRecon} title="View data reconciliation report">
-          {badgeText}
-        </button>
       </div>
     </div>
   )
