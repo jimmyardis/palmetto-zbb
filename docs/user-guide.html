@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Palmetto ZBB Suite 2.0 — User Guide</title>
+<style>
+  /* ── Variables ─────────────────────────────────────── */
+  :root {
+    --navy:   #1B2F5E;
+    --gold:   #C9963A;
+    --light:  #E8EDF7;
+    --green:  #1b5e20;
+    --bg:     #f4f6fb;
+    --border: #d0d7e8;
+    --text:   #1a1a2e;
+    --muted:  #5a6580;
+  }
+
+  /* ── Base ──────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text); background: var(--bg); line-height: 1.6;
+  }
+  a { color: var(--navy); }
+
+  /* ── Page layout ───────────────────────────────────── */
+  .page-wrap { max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  /* ── Cover ─────────────────────────────────────────── */
+  .cover {
+    background: var(--navy); color: #fff;
+    border-radius: 10px; padding: 48px 48px 40px;
+    margin-bottom: 48px; position: relative; overflow: hidden;
+  }
+  .cover::after {
+    content: '🌴';
+    position: absolute; right: 40px; top: 32px;
+    font-size: 80px; opacity: .12;
+  }
+  .cover .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 12px;
+  }
+  .cover h1 { font-size: 32px; font-weight: 800; line-height: 1.15; margin-bottom: 12px; }
+  .cover .subtitle { font-size: 15px; color: rgba(255,255,255,.7); max-width: 560px; }
+  .cover .meta {
+    margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.15);
+    display: flex; gap: 32px; flex-wrap: wrap;
+    font-size: 12px; color: rgba(255,255,255,.55);
+  }
+  .cover .meta strong { color: rgba(255,255,255,.85); display: block; font-size: 13px; }
+  .gold-bar {
+    height: 4px; background: var(--gold); border-radius: 2px;
+    margin-bottom: 48px;
+  }
+
+  /* ── Table of Contents ─────────────────────────────── */
+  .toc {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 28px 32px; margin-bottom: 48px;
+  }
+  .toc h2 { font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--navy); margin-bottom: 16px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 6px; font-size: 14px; }
+  .toc a { text-decoration: none; color: var(--navy); }
+  .toc a:hover { text-decoration: underline; }
+  .toc .sub { padding-left: 18px; margin-top: 4px; }
+  .toc .sub li { font-size: 13px; color: var(--muted); margin-bottom: 3px; }
+
+  /* ── Section headings ──────────────────────────────── */
+  .section {
+    margin-bottom: 56px;
+  }
+  .section-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 6px;
+  }
+  h2.section-title {
+    font-size: 22px; font-weight: 800; color: var(--navy);
+    border-bottom: 3px solid var(--gold); padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  h3.subsection {
+    font-size: 16px; font-weight: 700; color: var(--navy);
+    margin: 28px 0 10px;
+  }
+  h4.step-head {
+    font-size: 14px; font-weight: 700; color: var(--navy); margin: 20px 0 6px;
+  }
+  p { margin-bottom: 12px; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; }
+
+  /* ── Step blocks ───────────────────────────────────── */
+  .step-block {
+    display: flex; gap: 16px; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .step-num {
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--navy); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-content strong { color: var(--navy); }
+
+  /* ── Screenshots ───────────────────────────────────── */
+  .screenshot-img {
+    width: 100%; border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    margin: 16px 0 8px; display: block;
+  }
+  .screenshot-label {
+    font-size: 11px; color: var(--muted); text-align: center;
+    margin-bottom: 20px; font-style: italic;
+  }
+
+  /* ── Callout boxes ─────────────────────────────────── */
+  .callout {
+    border-radius: 6px; padding: 14px 18px; margin: 16px 0; font-size: 14px;
+  }
+  .callout-tip   { background: #e3f2fd; border-left: 4px solid #1565c0; color: #0d47a1; }
+  .callout-warn  { background: #fff3e0; border-left: 4px solid #e65100; color: #bf360c; }
+  .callout-info  { background: var(--light); border-left: 4px solid var(--navy); color: var(--navy); }
+  .callout-zbb   { background: #fdf4e7; border-left: 4px solid var(--gold); color: #7a4f0a; }
+  .callout strong { display: block; margin-bottom: 4px; font-size: 12px;
+    text-transform: uppercase; letter-spacing: .05em; }
+
+  /* ── Button labels ─────────────────────────────────── */
+  .btn-label {
+    display: inline-block; padding: 2px 9px; border-radius: 4px;
+    border: 1.5px solid var(--navy); background: var(--navy); color: #fff;
+    font-size: 12px; font-weight: 700; white-space: nowrap; vertical-align: middle;
+  }
+  .btn-label.gold { background: var(--gold); border-color: var(--gold); }
+  .btn-label.outline { background: #fff; color: var(--navy); }
+  .btn-label.green { background: #1b5e20; border-color: #1b5e20; }
+  .btn-label.red { background: #c62828; border-color: #c62828; }
+  kbd {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    border: 1px solid var(--border); background: #f4f6fb;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  /* ── Tab indicator ─────────────────────────────────── */
+  .tab-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    background: var(--navy); color: #fff;
+    font-size: 12px; font-weight: 600;
+    vertical-align: middle;
+  }
+  .tab-chip.active { background: var(--gold); }
+
+  /* ── Workflow diagram ──────────────────────────────── */
+  .workflow {
+    display: flex; align-items: center; gap: 0;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; margin: 20px 0;
+    overflow-x: auto;
+  }
+  .wf-step {
+    text-align: center; flex: 1; min-width: 110px;
+  }
+  .wf-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--navy); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin: 0 auto 6px;
+  }
+  .wf-label { font-size: 11px; font-weight: 700; color: var(--navy); }
+  .wf-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .wf-arrow {
+    color: var(--gold); font-size: 20px; font-weight: 700;
+    padding: 0 4px; flex-shrink: 0; margin-bottom: 20px;
+  }
+
+  /* ── Glossary ──────────────────────────────────────── */
+  .glossary-term { font-weight: 700; color: var(--navy); }
+
+  /* ── Table ─────────────────────────────────────────── */
+  table.guide-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    margin: 12px 0 20px; background: #fff;
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  }
+  table.guide-table th {
+    background: var(--navy); color: #fff;
+    padding: 9px 12px; text-align: left;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  }
+  table.guide-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  table.guide-table tr:last-child td { border-bottom: none; }
+  table.guide-table tr:nth-child(even) td { background: #f9fafc; }
+
+  /* ── Case study banner ─────────────────────────────── */
+  .case-banner {
+    background: linear-gradient(135deg, var(--navy) 0%, #2a4a8a 100%);
+    color: #fff; border-radius: 8px; padding: 18px 24px;
+    margin: 24px 0; display: flex; align-items: center; gap: 16px;
+  }
+  .case-banner .badge {
+    background: var(--gold); color: var(--navy);
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; white-space: nowrap; flex-shrink: 0;
+  }
+  .case-banner p { font-size: 14px; color: rgba(255,255,255,.9); margin: 0; }
+
+  /* ── Print ─────────────────────────────────────────── */
+  @media print {
+    body { background: #fff; font-size: 13px; }
+    .page-wrap { padding: 20px; max-width: 100%; }
+    .cover { border-radius: 4px; page-break-after: always; }
+    .section { page-break-inside: avoid; }
+    .screenshot { border: 1px dashed #ccc; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ── COVER ── -->
+  <div class="cover">
+    <div class="eyebrow">South Carolina General Assembly · FY 2025–2026</div>
+    <h1>Palmetto ZBB Suite 2.0<br>User Guide</h1>
+    <p class="subtitle">A step-by-step guide to zero-based budget review using the
+      Palmetto ZBB Suite — illustrated with the Department of Administration
+      as a complete case study.</p>
+    <div class="meta">
+      <div><strong>Budget Source</strong>H.4025, ratified May 28, 2025</div>
+      <div><strong>Agencies Covered</strong>115 SC agencies, $39.2B total</div>
+      <div><strong>Audience</strong>Legislative staff, fiscal analysts, policy teams</div>
+    </div>
+  </div>
+
+  <!-- ── TABLE OF CONTENTS ── -->
+  <div class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#intro">Introduction — What Is Zero-Based Budgeting?</a></li>
+      <li><a href="#app-overview">App Overview — Finding Your Way Around</a></li>
+      <li><a href="#case-study">Case Study: Department of Administration</a>
+        <ol class="sub">
+          <li><a href="#step1">Step 1 · Overview Tab — Find the Agency</a></li>
+          <li><a href="#step2">Step 2 · Agency Explorer — Read the Numbers</a></li>
+          <li><a href="#step3">Step 3 · ZBB Sandbox — Build from Zero</a></li>
+          <li><a href="#step4">Step 4 · Scenarios — Compare and Present</a></li>
+          <li><a href="#step5">Step 5 · Navigator — Research Provisos</a></li>
+        </ol>
+      </li>
+      <li><a href="#data-integrity">Data Integrity — How to Know You Can Trust the Numbers</a></li>
+      <li><a href="#tips">Tips, Shortcuts &amp; Best Practices</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 1 — INTRO -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="intro">
+    <div class="section-label">Section 1</div>
+    <h2 class="section-title">Introduction — What Is Zero-Based Budgeting?</h2>
+
+    <p>Traditional budgeting asks: <em>"What did you spend last year? Add some percent for
+    growth."</em> Zero-based budgeting (ZBB) asks a harder question: <em>"If this agency
+    didn't exist today, what would we fund — and why?"</em></p>
+
+    <p>Every dollar must be justified from zero. Programs are ranked by priority. Lawmakers
+    see exactly what they're buying, not just what they've always bought.</p>
+
+    <div class="callout callout-zbb">
+      <strong>The ZBB Mindset</strong>
+      Start with a blank sheet. Rebuild the budget line by line. Assign a priority tier
+      to each line item — <em>Mandated</em>, <em>High</em>, <em>Medium</em>, or <em>Low</em>.
+      Then decide what to fund at what level.
+    </div>
+
+    <p>The <strong>Palmetto ZBB Suite</strong> makes this process practical for South Carolina's
+    $39.2 billion budget across 115 agencies. Every line item in the tool is sourced verbatim
+    from <strong>H.4025</strong> (the FY 2025–2026 Appropriations Act). No figures are estimated
+    or approximated — every number carries a source citation.</p>
+
+    <h3 class="subsection">Who Should Use This Guide</h3>
+    <ul>
+      <li>Legislative analysts conducting zero-based budget reviews</li>
+      <li>Subcommittee staff preparing agency hearings</li>
+      <li>Policy researchers evaluating spending priorities</li>
+      <li>Agency budget officers reviewing their own submissions</li>
+      <li>Anyone new to the tool who wants a hands-on walkthrough</li>
+    </ul>
+
+    <h3 class="subsection">What This Guide Covers</h3>
+    <p>We'll walk through every function of the Palmetto ZBB Suite using the
+    <strong>SC Department of Administration</strong> as our example agency — from
+    locating it on the treemap all the way through building a zero-based budget
+    and preparing a committee presentation.</p>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 2 — APP OVERVIEW -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="app-overview">
+    <div class="section-label">Section 2</div>
+    <h2 class="section-title">App Overview — Finding Your Way Around</h2>
+
+    <img src="screenshots/shot-01-overview-first-load.jpg"
+         alt="Palmetto ZBB Suite home screen showing the navy navigation bar, Overview tab active, full agency treemap, and the green Data Integrity Badge in the top right"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 1 — The Palmetto ZBB Suite home screen</p>
+
+    <h3 class="subsection">Budget Totals at a Glance</h3>
+    <p>Just below the navigation bar, four summary cards anchor every screen to the verified totals for the year.</p>
+
+    <img src="screenshots/shot-02-budget-banner-four-figures.jpg"
+         alt="Navy budget banner showing the four authoritative figures: H.4025 Recurring total, FY2024-25 Surplus nonrecurring, Capital Reserve Fund nonrecurring, and Grand Total of $41.0 billion"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 2 — Four verified totals sourced from the Conference Committee Summary Control Document</p>
+
+    <img src="screenshots/shot-03-stat-cards-grid.jpg"
+         alt="Stat cards close-up showing the four verified totals: H.4025 Recurring, FY2024-25 Surplus, Capital Reserve Fund, and Grand Total"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 3 — Stat cards close-up — the four verified totals at a glance</p>
+
+    <h3 class="subsection">The Navigation Bar</h3>
+    <p>The dark navy bar across the top is your control center. It stays visible on every screen.</p>
+
+    <table class="guide-table">
+      <thead>
+        <tr><th>Element</th><th>What It Does</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>🌴 <strong>Palmetto ZBB Suite</strong> wordmark</td>
+          <td>Branding; shows the fiscal year and bill number (H.4025)</td>
+        </tr>
+        <tr>
+          <td><span class="tab-chip">Overview</span>
+              <span class="tab-chip">Agency Explorer</span>
+              <span class="tab-chip">ZBB Sandbox</span>
+              <span class="tab-chip">Scenarios</span>
+              <span class="tab-chip">Navigator</span></td>
+          <td>The five main modules. Click any tab to switch. The active tab is highlighted in gold.</td>
+        </tr>
+        <tr>
+          <td><span class="btn-label outline">?</span></td>
+          <td>Opens the in-app User Guide modal. Also triggered by pressing <kbd>?</kbd> on your keyboard.</td>
+        </tr>
+        <tr>
+          <td><span class="btn-label green">✓ 5,106 line items · $39.16B · H.4025</span></td>
+          <td>The <strong>Data Integrity Badge</strong>. Green = all figures reconciled. Click it to see the full reconciliation report by agency.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="subsection">The Five Modules at a Glance</h3>
+
+    <div class="workflow">
+      <div class="wf-step">
+        <div class="wf-icon">🗺</div>
+        <div class="wf-label">Overview</div>
+        <div class="wf-sub">See all 115<br>agencies</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">🔍</div>
+        <div class="wf-label">Explorer</div>
+        <div class="wf-sub">Line items<br>&amp; provisos</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">🧮</div>
+        <div class="wf-label">Sandbox</div>
+        <div class="wf-sub">Build from<br>zero</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">📊</div>
+        <div class="wf-label">Scenarios</div>
+        <div class="wf-sub">Compare<br>options</div>
+      </div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-step">
+        <div class="wf-icon">💬</div>
+        <div class="wf-label">Navigator</div>
+        <div class="wf-sub">Ask proviso<br>questions</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>Tip — keyboard shortcut</strong>
+      Press <kbd>?</kbd> at any time to open the in-app help guide. It does not trigger
+      when your cursor is inside a text field.
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 3 — CASE STUDY -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="case-study">
+    <div class="section-label">Section 3</div>
+    <h2 class="section-title">Case Study: Department of Administration</h2>
+
+    <p>The <strong>SC Department of Administration (DOA)</strong> is a central services agency
+    that provides facilities management, human resources, procurement, and technology services
+    to other state agencies. It makes an ideal training example because it has:</p>
+    <ul>
+      <li>Multiple fund types (General Fund plus Other Funds)</li>
+      <li>A mix of mandated functions and discretionary programs</li>
+      <li>Several Part IB provisos governing specific spending</li>
+      <li>Clear federal compliance dimensions</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <strong>About the case study figures</strong>
+      All dollar amounts shown in the screenshots you will add are sourced verbatim from
+      H.4025. The tool displays these exact figures — you are never looking at estimates.
+    </div>
+
+    <!-- ── STEP 1 ── -->
+    <h3 class="subsection" id="step1">Step 1 · Overview Tab — Find the Agency</h3>
+
+    <div class="case-banner">
+      <span class="badge">You are here</span>
+      <p>Starting point. Get oriented to the full budget, then locate the Department of Administration.</p>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Click the Overview tab</strong> in the navigation bar (it is active by default when you open the app).
+        You will see a treemap of all 115 agencies, sized by total appropriation.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-04-treemap-total-funds-recurring.jpg"
+         alt="Overview treemap in Total Funds view showing all 115 SC agencies as sized boxes. Larger boxes indicate larger budgets; darker navy shading indicates higher General Fund dependency."
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 4 — The Overview treemap (Total Funds / Recurring view). Larger boxes = larger budgets. Darker boxes = higher General Fund dependency.</p>
+
+    <div class="step-block">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Read the treemap.</strong> Each box shows the agency name and total appropriation.
+        Color depth signals General Fund dependency — darker navy means more state tax revenue
+        reliance; lighter boxes lean on federal or self-generated funds.
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Toggle nonrecurring funds.</strong> The <span class="btn-label outline">Include Nonrecurring</span> switch
+        adds the FY2024-25 Surplus and Capital Reserve Fund to the treemap. Agencies receiving
+        one-time capital allocations will visibly grow. Toggle it off to return to the recurring-only view.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-05-treemap-include-nonrecurring.jpg"
+         alt="Overview treemap with Include Nonrecurring toggled on, showing agencies that received one-time surplus or Capital Reserve Fund allocations appearing larger"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 5 — Treemap with nonrecurring funds included. Agencies with one-time capital allocations expand visibly.</p>
+
+    <div class="step-block">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Review the Top 20 bar chart</strong> below the treemap. It ranks the 20 largest
+        agencies by total appropriation, with General Fund and Other Funds broken out by color.
+        This is the fastest way to identify where the major dollars are concentrated.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-06-top-20-bar-chart.jpg"
+         alt="Horizontal bar chart of the top 20 agencies by total appropriation, with bars segmented by General Fund (navy) and Other Funds (gold)"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 6 — Top 20 agencies by appropriation. Navy = General Fund; gold = Other Funds (federal + fees).</p>
+
+    <div class="step-block">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>Check ZBB Session Progress</strong> at the bottom of the Overview tab. A progress
+        bar and agency-by-agency status list shows how much of the review is complete. Use this
+        to coordinate with your team during multi-agency reviews.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-07-zbb-session-progress-mixed-statuses.jpg"
+         alt="ZBB Session Progress panel (right-panel close-up) showing four status states: Dept of Health (Not Started), Dept of Education (In Review), Dept of Transportation (Justified), Clemson (Flagged)"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 7 — ZBB Session Progress panel. Four status states shown; tracks multi-agency review progress in real time.</p>
+
+    <div class="step-block">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <strong>Click the Department of Administration box</strong> in the treemap. The app navigates
+        you directly to that agency in the Agency Explorer tab — the fastest path from budget-wide
+        view to agency detail.
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>Can't find an agency in the treemap?</strong>
+      Smaller agencies have small boxes that can be hard to click. Use Agency Explorer
+      directly — it has a search box at the top of the agency list.
+    </div>
+
+
+    <!-- ── STEP 2 ── -->
+    <h3 class="subsection" id="step2">Step 2 · Agency Explorer — Read the Numbers</h3>
+
+    <div class="case-banner">
+      <span class="badge">You are here</span>
+      <p>Understand every line item, fund source, and policy proviso for the Department of Administration before touching the budget.</p>
+    </div>
+
+    <img src="screenshots/shot-08-agency-selector-card.jpg"
+         alt="Agency Explorer with Department of Administration loaded — left panel shows the agency list with DOA highlighted; right panel shows DOA stat cards, bar chart, and line items table"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 8 — Agency Explorer with Department of Administration (§93, $409,569,591) loaded</p>
+
+    <img src="screenshots/shot-09-agency-stat-cards.jpg"
+         alt="DOA agency stat cards: Total $409M, General Fund $129M, Other/Federal $280M, GF Dependency 32% — each figure with a green verified citation badge sourced from H.4025"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 9 — Agency stat cards for DOA. Total $409M / GF $129M / Other $280M. Each figure carries a ✓ citation badge.</p>
+
+    <h4 class="step-head">The Two-Panel Layout</h4>
+    <p>Agency Explorer is split into two panels:</p>
+    <ul>
+      <li><strong>Left panel</strong> — scrollable list of all 115 agencies. Search box at top. Click any agency to load it.</li>
+      <li><strong>Right panel</strong> — all line items for the selected agency, plus proviso text and review status controls.</li>
+    </ul>
+
+    <div class="step-block">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Select Department of Administration</strong> from the left panel list, or type
+        "admin" in the search box to filter. The agency loads in the right panel with its
+        total appropriation, section number, and all line items.
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Read the line items table.</strong> Each row shows:
+        <ul>
+          <li><strong>Program / Object</strong> — the specific budget line (e.g., Personal Service, Contractual Services, Equipment)</li>
+          <li><strong>Fund type</strong> — General Fund (GF), Federal (Fed), or Other Funds</li>
+          <li><strong>Amount</strong> — the exact dollar figure from H.4025</li>
+          <li><strong>Citation badge</strong> — <span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:700;background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;">✓ Verified</span> confirms the number is sourced directly from the bill</li>
+        </ul>
+      </div>
+    </div>
+
+    <img src="screenshots/shot-10-line-items-table.jpg"
+         alt="DOA line items table showing program names, FED badges on federal match lines, dollar amounts from H.4025, and green ✓ citation badges with page numbers on each row"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 10 — DOA line items table. FED badges flag federal match lines; every figure links to its source page in H.4025.</p>
+
+    <div class="step-block">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Research the governing provisos</strong> before making any changes.
+        Part IB provisos — the legal language governing how each appropriation may be used —
+        are searchable in two ways:
+        <ul style="margin-top:8px;">
+          <li>The <strong>✦ AI Suggest</strong> button in the Sandbox retrieves the most relevant
+            Part IB proviso text for a specific line item and drafts a justification from it.</li>
+          <li>The <strong>Navigator</strong> tab lets you ask plain-English questions across the
+            full Part IB corpus — ideal for cross-agency policy questions or confirming restrictions
+            before zeroing a line.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Filter and sort</strong> using the controls at the top of the line items panel:
+        <ul>
+          <li>Filter by <strong>fund type</strong> (GF only, Federal only, Other only) to isolate General Fund exposure</li>
+          <li>Sort by <strong>amount</strong> — largest line items first — to focus your review on the biggest dollars</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>Set a review status</strong> using the status badge in the agency list:
+        <table class="guide-table" style="margin-top:8px;">
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#f5f5f5;color:#555;border:1px solid #ccc;">Not Started</span></td><td>Agency has not been opened yet</td></tr>
+            <tr><td><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;">In Review</span></td><td>Currently being analyzed</td></tr>
+            <tr><td><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;">Justified</span></td><td>ZBB complete, budget justified</td></tr>
+            <tr><td><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:#ffebee;color:#b71c1c;border:1px solid #ef9a9a;">Flagged</span></td><td>Needs further review or has concerns</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <img src="screenshots/shot-12-status-badges-all-states.jpg"
+         alt="Agency list left panel close-up showing all four review status badge states: Not Started (gray), In Review (blue), Justified (green), Flagged (red) across top agencies"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 11 — Status badges in the agency list. Mark progress as your team works through each agency.</p>
+
+    <div class="step-block">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <strong>Export if needed.</strong> Use the
+        <span class="btn-label outline">Export CSV</span> or
+        <span class="btn-label outline">Export Word</span> buttons to pull a full
+        line-item listing for offline review or distribution to agency staff.
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>Watch for Federal Match Lines</strong>
+      Any line item with a <span style="display:inline-block;padding:1px 5px;border-radius:4px;background:#fff3e0;color:#e65100;font-size:11px;font-weight:700;border:1px solid #ffcc80;">FED MATCH</span>
+      badge means a General Fund cut will also forfeit federal dollars — often at a 2:1 or 3:1 ratio.
+      The Scenarios tab will calculate this automatically when you compare budgets.
+    </div>
+
+
+    <!-- ── STEP 3 ── -->
+    <h3 class="subsection" id="step3">Step 3 · ZBB Sandbox — Build from Zero</h3>
+
+    <div class="case-banner">
+      <span class="badge">You are here</span>
+      <p>This is the core ZBB exercise. Load DOA, zero everything out, then rebuild line by line with required justifications.</p>
+    </div>
+
+    <img src="screenshots/shot-13-sandbox-agency-loaded.jpg"
+         alt="ZBB Sandbox tab with Department of Administration loaded — full line items table showing original H.4025 amounts, bulk operation toolbar, priority tier selectors, and ✦ Suggest buttons on each row"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 12 — ZBB Sandbox loaded with Department of Administration (§93, $409,569,591)</p>
+
+    <h4 class="step-head">Loading the Agency</h4>
+
+    <div class="step-block">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Navigate to ZBB Sandbox</strong> from any tab. If you came from Agency Explorer
+        by clicking <span class="btn-label outline">Open in Sandbox</span>, the agency is
+        already loaded. Otherwise, use the agency selector at the top of the Sandbox tab.
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Review the loaded state.</strong> When an agency first loads, all line items
+        show their original H.4025 appropriation. The running totals bar at the bottom
+        shows Current, Proposed, and Variance — all at zero variance until you make changes.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-14-running-totals-bar-with-cut.jpg"
+         alt="Running totals sidebar for DOA with a 10% bulk cut applied — Current $409M, Proposed $368M, Variance -$41M (10% reduction) shown in the sticky right-hand panel"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 13 — Running totals sidebar after a 10% bulk cut on DOA. Tracks Current vs. Proposed in real time; variance turns red when below original.</p>
+
+    <h4 class="step-head">Zeroing Out and Rebuilding</h4>
+
+    <div class="step-block">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Click <span class="btn-label red">↓ Zero All</span></strong> to zero all
+        line items instantly. This is the ZBB starting point — every proposed amount goes
+        to $0 and the running totals reflect a 100% reduction. You can undo this at any time with
+        <kbd>Ctrl</kbd> + <kbd>Z</kbd>.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-15-after-reset-to-zero.jpg"
+         alt="ZBB Sandbox immediately after Zero All — all DOA justified amounts show $0, Variance shows -$409M (100% reduction), running totals sidebar updated"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 14 — After ↓ Zero All. Every DOA line starts at $0. Use Undo to reverse.</p>
+
+    <div class="step-block">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>For each line item, decide three things:</strong>
+        <ol style="margin-top:8px;">
+          <li><strong>Should this be funded?</strong> If no, leave it at $0.</li>
+          <li><strong>At what amount?</strong> Enter the justified dollar figure. It can equal,
+            exceed, or be less than the original appropriation.</li>
+          <li><strong>At what priority?</strong> Select a tier:</li>
+        </ol>
+        <table class="guide-table" style="margin-top:10px;">
+          <thead><tr><th>Tier</th><th>Definition</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#ede7f6;color:#4527a0;">Mandated</span></td>
+              <td>Legally required — state or federal law</td>
+              <td>Constitutional officer salaries, federally required match</td>
+            </tr>
+            <tr>
+              <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#ffebee;color:#b71c1c;">High</span></td>
+              <td>Critical to core mission</td>
+              <td>Facilities maintenance, procurement systems</td>
+            </tr>
+            <tr>
+              <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#fff8e1;color:#f57f17;">Medium</span></td>
+              <td>Important but deferrable</td>
+              <td>Training programs, equipment upgrades</td>
+            </tr>
+            <tr>
+              <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#e8f5e9;color:#1b5e20;">Low</span></td>
+              <td>Beneficial but not essential</td>
+              <td>Studies, conferences, subscriptions</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>Write a justification</strong> for each funded line item in the text field.
+        This becomes the narrative in your exported decision package. Be specific:
+        <em>"Required by Section 1-11-56 of SC Code; supports statewide HR system serving
+        68,000 employees."</em>
+        Not sure where to start? Use the <strong>✦ AI Suggest</strong> button — it searches
+        the Part IB proviso text and drafts a justification based on the closest matching proviso.
+        Review and edit the result before saving.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-16-sandbox-rows-different-states.jpg"
+         alt="DOA Sandbox after manual rebuild — first three rows configured with Mandated/High/Low priority tiers and justification text filled in; proposed amounts set below original"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 15 — Rebuilding line by line. First three DOA rows assigned priority tiers and justifications; remaining rows still at $0.</p>
+
+    <img src="screenshots/shot-17-suggest-button-result.jpg"
+         alt="DOA Sandbox row with the ✦ AI Suggest button result populated — justification field shows actual Part IB proviso text referencing Section 93 D500 and Proviso 93.11 from tap1b.pdf"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 16 — AI Suggest retrieves the matching Part IB proviso text (here: Section 93 D500, Proviso 93.11). Always review and edit before saving.</p>
+
+    <h4 class="step-head">Bulk Operations</h4>
+
+    <div class="step-block">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <strong>Use checkboxes</strong> to select multiple rows, then use the bulk action toolbar to:
+        <ul>
+          <li>Set a priority tier across all selected rows</li>
+          <li>Apply a percentage reduction to all selected amounts</li>
+          <li>Zero out or restore all selected rows at once</li>
+        </ul>
+        This is especially useful for Personal Service lines where you want to apply a uniform reduction.
+      </div>
+    </div>
+
+    <h4 class="step-head">Saving Your Work</h4>
+
+    <div class="step-block">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <strong>Save as a named scenario</strong> using the
+        <span class="btn-label gold">Save Scenario</span> button.
+        Type a descriptive name inline — <em>"DOA — 5% GF Reduction"</em> or
+        <em>"DOA — Mandated Only"</em> — then confirm. You can save multiple scenarios and compare them
+        in the Scenarios tab.
+        <div class="callout callout-tip" style="margin-top:10px;">
+          <strong>Undo / Redo</strong>
+          <kbd>Ctrl</kbd> + <kbd>Z</kbd> to undo. <kbd>Ctrl</kbd> + <kbd>Y</kbd> to redo.
+          Works for any change — amount edits, priority changes, bulk operations.
+        </div>
+      </div>
+    </div>
+
+    <img src="screenshots/shot-18-save-scenario-name-input.jpg"
+         alt="DOA Sandbox with scenario name input showing 'DOA — 10% GF Reduction' and the Zero Out state applied — Save Scenario button ready to confirm"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 17 — Saving a named DOA scenario. The name appears in the Scenarios tab for comparison.</p>
+
+    <div class="step-block">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <strong>Export a decision package</strong> using
+        <span class="btn-label outline">Export Word</span>. This generates a formatted
+        Word document with the agency summary, all line items with your justified amounts
+        and priority tiers, and all justification text — ready to hand to a subcommittee
+        or agency director. Enter your name in the Preparer field so the document is signed.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-19-export-word-preparer-field.jpg"
+         alt="DOA Sandbox Export Word view with Preparer field showing 'Jimmy Ardis' and the Export Word button visible in the running total panel"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 18 — Export Word with Preparer field. The output is a formatted decision package ready for subcommittee distribution.</p>
+
+
+    <!-- ── STEP 4 ── -->
+    <h3 class="subsection" id="step4">Step 4 · Scenarios — Compare and Present</h3>
+
+    <div class="case-banner">
+      <span class="badge">You are here</span>
+      <p>You've saved at least one DOA scenario. Now compare it to other scenarios or to the original appropriation.</p>
+    </div>
+
+    <img src="screenshots/shot-20-scenario-selector-populated.jpg"
+         alt="Scenarios tab showing the scenario A/B/C selector dropdowns — Scenario C populated with 'DOA — Conservative 5% Trim'; A and B selectors visible for additional scenario selection"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 19 — Scenario selector. Pick up to three saved scenarios to compare simultaneously.</p>
+
+    <div class="step-block">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Open the Scenarios tab.</strong> Your saved scenarios appear as cards —
+        each showing the agency name, scenario label, and total justified amount at a glance.
+        Select up to three to compare simultaneously using the A / B / C selectors.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-21-saved-scenarios-cards.jpg"
+         alt="Three DOA saved scenario cards: '10% GF Reduction', 'Aggressive 25% Cut', 'Conservative 5% Trim' — each showing total justified amount and delta in red"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 20 — Saved scenario cards for DOA. Click any card to load it into the comparison view.</p>
+
+    <div class="step-block">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Read the comparison table.</strong> For each line item, see what each
+        scenario funds vs. the original, with the delta highlighted. Cuts are shown in red;
+        increases in green.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-22-comparison-table.jpg"
+         alt="DOA scenario comparison table — three saved DOA scenarios side by side with baseline amounts, per-scenario proposed amounts, and delta columns for every line item"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 21 — Comparison table. Three DOA scenarios side by side with delta columns for every line item.</p>
+
+    <div class="step-block">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Check the warnings panel.</strong> Federal match warnings appear automatically —
+        any General Fund reduction that puts federal matching funds at risk is flagged with the
+        <span style="display:inline-block;padding:1px 5px;border-radius:4px;background:#fff3e0;color:#e65100;font-size:11px;font-weight:700;border:1px solid #ffcc80;">FED MATCH AT RISK</span>
+        label. The panel shows both the GF cut and the federal dollars at risk — the true
+        cost of the reduction.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-24-warnings-panel.jpg"
+         alt="DOA warnings panel showing 72 federal match items cut greater than 10% — triggered by the Aggressive 25% Cut scenario — with affected line items listed below the orange warning banner"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 22 — Warnings panel. 72 DOA federal match items flagged at risk under the Aggressive 25% Cut scenario. The true cost of GF reductions is shown.</p>
+
+    <div class="step-block">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Read the waterfall chart.</strong> The chart shows the cumulative savings
+        as you move from cutting Low priority items through Medium and High. Use it to frame
+        the committee conversation: <em>"We can save $X with minimal service impact by cutting
+        only Low and Medium priority lines. Here's what it costs to go further."</em>
+      </div>
+    </div>
+
+    <img src="screenshots/shot-23-waterfall-chart.jpg"
+         alt="DOA Scenarios waterfall chart showing line-item-level reductions for the Aggressive 25% Cut scenario — horizontal bars for each program name with navy shading indicating cut size"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 23 — Waterfall chart (Scenarios tab, scroll down past the comparison table). Line-item cuts shown left to right; largest reductions at the bottom.</p>
+
+    <div class="step-block">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>Review the Top 10 Cuts table</strong> to see which line items are taking
+        the largest dollar reductions across your selected scenarios. This is a quick check
+        that the biggest cuts are intentional and defensible.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-25-top-10-cuts-table.jpg"
+         alt="DOA Top 10 Cuts table listing the ten DOA line items with the largest dollar reductions under the selected scenario — program name, original amount, proposed amount, and dollar variance"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 24 — Top 10 Cuts (Scenarios tab, scroll below the waterfall chart). Largest reductions at a glance — verify these are intentional before exporting.</p>
+
+    <div class="step-block">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <strong>Export your analysis</strong> using the export buttons at the top of the Scenarios tab:
+        <ul>
+          <li><span class="btn-label outline">Export CSV</span> — raw comparison data for further analysis in Excel or Google Sheets</li>
+          <li><span class="btn-label outline">Export Word</span> — formatted committee packet, one page per agency with scenario comparison and priority breakdown</li>
+        </ul>
+      </div>
+    </div>
+
+    <img src="screenshots/shot-26-export-csv-and-word.jpg"
+         alt="DOA Scenarios overview showing saved scenario cards with per-card Export Word buttons and the Export CSV button visible at the top right of the scenarios panel"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 25 — Export options. Export CSV (top right) for data analysis; per-scenario Export Word for committee packets.</p>
+
+    <div class="step-block">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <strong>Use Presentation Mode</strong> for committee rooms. Add
+        <code>?present=true</code> to the app URL to strip the navigation bar and display
+        the Scenarios tab in large-format view — optimized for a projector or large monitor.
+      </div>
+    </div>
+
+
+    <!-- ── STEP 5 ── -->
+    <h3 class="subsection" id="step5">Step 5 · Navigator — Research Provisos</h3>
+
+    <div class="case-banner">
+      <span class="badge">You are here</span>
+      <p>Use plain-English questions to search the full Part IB proviso text — ideal when you need to understand the legal constraints on spending.</p>
+    </div>
+
+    <img src="screenshots/shot-27-navigator-input.jpg"
+         alt="Navigator tab showing the question input field with example question chips below it suggesting common query types"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 26 — Navigator input field. Type any plain-English question about the budget or provisos.</p>
+
+    <div class="step-block">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Open the Navigator tab</strong> and type a question in plain English.
+        The AI searches the full Part IB proviso text and returns a precise, cited answer.
+        It never generates or estimates numbers — every answer cites the specific proviso.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-28-navigator-annotated-answer.jpg"
+         alt="Navigator tab showing an annotated AI answer with green checkmark verified markers on verbatim proviso citations and source references from tap1b.pdf and the Conference Report"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 27 — Navigator answer with citations. Green ✓ markers confirm verbatim proviso text; source documents are listed below.</p>
+
+    <div class="step-block">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Try these DOA-specific questions:</strong>
+        <ul>
+          <li><em>"What provisos govern the Department of Administration?"</em></li>
+          <li><em>"What restrictions apply to procurement in state agencies?"</em></li>
+          <li><em>"Which agencies have provisos related to real property management?"</em></li>
+          <li><em>"What does the budget say about state employee benefits?"</em></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Read the citations.</strong> Every answer includes the specific Part IB
+        proviso number and the verbatim text. Use these citations when writing justifications
+        in the Sandbox or when drafting committee reports.
+      </div>
+    </div>
+
+    <div class="step-block">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Your question history</strong> appears in the left panel. Click any past
+        question to reload the answer. Good for cross-referencing during hearings — you
+        can build up a set of proviso questions for a specific agency before the hearing starts.
+      </div>
+    </div>
+
+    <img src="screenshots/shot-29-navigator-history-populated.jpg"
+         alt="Navigator left panel showing a populated question history list with multiple past questions, each clickable to reload the associated answer"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 28 — Navigator session history. Past questions stay in the panel for the session — click any to reload the answer.</p>
+
+    <div class="callout callout-zbb">
+      <strong>Navigator + Sandbox together</strong>
+      Found a relevant proviso in Navigator? Copy the proviso number into your Sandbox
+      justification text to directly cite the legal authority behind your funding decision.
+      Example: <em>"Funded per Proviso 7.4 — required to maintain statewide lease management system."</em>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- DATA INTEGRITY BADGE -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="data-integrity">
+    <div class="section-label">Section 4</div>
+    <h2 class="section-title">Data Integrity — How to Know You Can Trust the Numbers</h2>
+
+    <p>Every dollar figure in the Palmetto ZBB Suite is extracted verbatim from
+    <strong>H.4025</strong> — the FY 2025–2026 Appropriations Act ratified May 28, 2025.
+    The green badge in the navigation bar is your live confirmation.</p>
+
+    <img src="screenshots/shot-30-data-integrity-badge.jpg"
+         alt="Close-up of the green Data Integrity Badge strip showing '5,106 line items · $39,160,420,867 total · Source: H.4025 ratified May 28 2025' — all reconciled"
+         class="screenshot-img">
+    <p class="screenshot-label">Fig. 29 — The Data Integrity Badge. Green = all 5,106 line items reconciled against H.4025. Click it for the full agency-by-agency reconciliation report.</p>
+
+    <p>Click the badge at any time to open the full reconciliation report — a per-agency breakdown
+    confirming that the database totals match the recapitulation tables in the enrolled bill.
+    The AI (Navigator and Sandbox Suggest) is <strong>prohibited</strong> from generating or
+    approximating any dollar figure. If the answer isn't in the source documents, the tool says so.</p>
+
+    <div class="callout callout-info">
+      <strong>Grand Total: $41,017,004,490</strong>
+      This figure includes H.4025 recurring ($39,160,420,867), the FY2024-25 Surplus ($1,486,799,741),
+      and the Capital Reserve Fund / H.4026 ($369,783,882). All three figures are sourced verbatim
+      from the Conference Committee Summary Control Document, May 21 2025.
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 5 — TIPS -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="tips">
+    <div class="section-label">Section 5</div>
+    <h2 class="section-title">Tips, Shortcuts &amp; Best Practices</h2>
+
+    <h3 class="subsection">Keyboard Shortcuts</h3>
+    <table class="guide-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open / close the User Guide modal</td></tr>
+        <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td><td>Undo last Sandbox change</td></tr>
+        <tr><td><kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>Redo last Sandbox change</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="subsection">Recommended ZBB Workflow</h3>
+    <ol>
+      <li><strong>Start in Overview</strong> — get the full picture before diving into one agency.</li>
+      <li><strong>Pick agencies by risk</strong> — sort by General Fund total to prioritize agencies with the most GF exposure.</li>
+      <li><strong>Always read provisos first</strong> — use Agency Explorer and Navigator to understand legal constraints before zeroing anything.</li>
+      <li><strong>Mark status as you go</strong> — use the In Review / Justified / Flagged system so your team knows where things stand.</li>
+      <li><strong>Save multiple scenarios</strong> — a "Mandated Only" and a "Realistic Cut" scenario per agency gives the committee real choices.</li>
+      <li><strong>Check federal match before cutting</strong> — always filter for FED MATCH lines and calculate the true cost of a GF reduction.</li>
+    </ol>
+
+    <h3 class="subsection">Team Use</h3>
+    <div class="callout callout-info">
+      <strong>Dividing the work</strong>
+      If your team is reviewing multiple agencies, assign each analyst one or more sections.
+      Mark agencies In Review when work begins and Justified when complete. The Overview tab
+      shows real-time progress across all 115 agencies so the team lead always has a clear picture.
+    </div>
+
+    <h3 class="subsection">Data Integrity — What You Can Trust</h3>
+    <p>Every dollar figure in the Palmetto ZBB Suite is extracted verbatim from
+    <strong>H.4025</strong> — the enrolled Appropriations Act ratified May 28, 2025.
+    The green badge in the top right confirms that 5,106 line items totaling
+    $39,160,420,867 are reconciled across all 115 agencies.</p>
+    <p>The AI (Navigator) is <strong>prohibited</strong> from generating or approximating
+    any dollar figure. If the answer isn't in the bill, the tool says so.</p>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 5 — GLOSSARY -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="glossary">
+    <div class="section-label">Section 6</div>
+    <h2 class="section-title">Glossary</h2>
+
+    <table class="guide-table">
+      <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="glossary-term">Appropriation</span></td>
+          <td>The amount of money the General Assembly authorizes an agency to spend in a fiscal year, as specified in H.4025.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">General Fund (GF)</span></td>
+          <td>State tax revenue — primarily income and sales taxes. The fund the legislature has the most control over.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Other Funds</span></td>
+          <td>Fees, fines, and other non-tax revenue generated by the agency itself (e.g., licensing fees, user charges).</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Federal Funds</span></td>
+          <td>Money from the federal government, often requiring a state match. Cutting the GF match can forfeit federal dollars at a multiple ratio.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Part IA</span></td>
+          <td>The numeric section of H.4025 — lists every line item appropriation for every agency.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Part IB (Proviso)</span></td>
+          <td>The policy rider section of H.4025 — legal language governing how appropriated funds may be spent, transferred, or reported.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Zero-Based Budget (ZBB)</span></td>
+          <td>A budgeting method where every dollar must be justified from zero each year, rather than carrying forward prior-year levels by default.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Priority Tier</span></td>
+          <td>A classification — Mandated, High, Medium, or Low — assigned to each line item in the Sandbox to indicate its importance to the agency mission.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Federal Match</span></td>
+          <td>A state General Fund expenditure required to "unlock" a larger federal grant or entitlement (e.g., Medicaid FMAP). Cutting the GF match forfeits the federal share.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Reconciliation</span></td>
+          <td>The process of verifying that the sum of all line items in the database matches the recapitulation (recap) totals from H.4025. The green badge = reconciled.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Scenario</span></td>
+          <td>A saved version of a ZBB build — e.g., "DOA — 5% GF Reduction." Multiple scenarios can be compared side by side in the Scenarios tab.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Decision Package</span></td>
+          <td>The exported Word document containing an agency's ZBB analysis — line items, justified amounts, priority tiers, and justification narratives.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">H.4025</span></td>
+          <td>The South Carolina General Appropriations Act for FY 2025–2026, ratified May 28, 2025. The sole data source for all figures in the Suite.</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <div style="text-align:center; font-size:12px; color:var(--muted); margin-top:48px; padding-top:24px; border-top:1px solid var(--border);">
+    Palmetto ZBB Suite 2.0 · SC General Assembly · FY 2025–2026 · H.4025
+    <br>All figures sourced verbatim from the enrolled Appropriations Act. The AI is prohibited from generating or approximating any figure.
+  </div>
+
+</div>
+</body>
+</html>
