@@ -784,7 +784,7 @@ def ingest_pdf_to_pinecone(key: str, description: str, pdf_path: Path,
                     "fiscal_year": FISCAL_YEAR,
                     "page_number": p["page"],
                     "chunk_index": ci,
-                    "linked_section": ",".join(linked),
+                    "linked_section": linked,  # list — Pinecone supports $in on arrays
                     "text_preview": chunk[:200],
                 },
             })

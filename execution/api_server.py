@@ -51,7 +51,7 @@ PINECONE_NS    = "fy2026-zia"
 VOYAGE_MODEL   = "voyage-3"
 CLAUDE_MODEL   = "claude-sonnet-4-6"
 MIN_SCORE      = 0.35
-TOP_K          = 8
+TOP_K          = 20
 FISCAL_YEAR    = "2025-2026"
 
 # ─── Logging ────────────────────────────────────────────────────────────────
@@ -458,7 +458,7 @@ def get_agency(section_number: str):
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=2000)
     section_filter: Optional[str] = None    # optional: limit to one section
-    top_k: int = Field(default=8, ge=1, le=20)
+    top_k: int = Field(default=20, ge=1, le=50)
 
 
 ANTI_HALLUCINATION_SYSTEM_PROMPT = """You are a neutral legislative budget analyst for the South Carolina General Assembly. You are assisting with analysis of the FY2025-2026 South Carolina Appropriations Act (H.4025, ratified May 28 2025).
@@ -478,6 +478,8 @@ CRITICAL RULES — YOU MUST FOLLOW THESE WITHOUT EXCEPTION:
 6. You may summarize, explain, and contextualize the text in the context — but every specific number you mention must appear verbatim in the context.
 
 7. Never speculate about legislative intent, future appropriations, or figures from prior years unless they appear in the provided context.
+
+8. When a question asks for a list (e.g. "which agencies have X"), enumerate every instance found in the context. Do not stop at one example. If the context contains multiple matches, list all of them. If the context is likely incomplete for a comprehensive list, say so explicitly and recommend reviewing the full appropriations act.
 
 The context below comes from official SC appropriations documents (Part IA appropriations tables and Part IB general provisions). Treat it as authoritative."""
 
@@ -511,7 +513,7 @@ def ask(req: AskRequest):
         "include_metadata": True,
     }
     if req.section_filter:
-        query_kwargs["filter"] = {"linked_section": {"$eq": req.section_filter}}
+        pass  # section_filter applied post-retrieval below (handles both list and string metadata formats)
 
     try:
         results = idx.query(**query_kwargs)
@@ -543,6 +545,16 @@ def ask(req: AskRequest):
             continue
         seen_ids.add(chunk_id)
         m = match.metadata or {}
+        # Post-retrieval section filter. linked_section may be a list (new ingest) or
+        # a comma-joined string (old ingest schema) — handle both.
+        if req.section_filter:
+            raw = m.get("linked_section", [])
+            if isinstance(raw, list):
+                linked = [str(s).strip() for s in raw if s]
+            else:
+                linked = [s.strip() for s in str(raw).split(",") if s.strip()]
+            if req.section_filter not in linked:
+                continue
         chunks.append({
             "score": match.score,
             "text": m.get("text_preview", ""),
@@ -554,12 +566,23 @@ def ask(req: AskRequest):
         })
 
     if not chunks:
-        return {
-            "answer": (
+        if req.section_filter:
+            msg = (
+                "No Part IB proviso text was found for this line item in the retrieved source documents. "
+                "This is common for allocation rows (ALLOC OTHER ENTITIES, pass-through funds) where "
+                "Part IB conditions are attached to the receiving agency's section rather than the "
+                "appropriating agency. Check the relevant program section in Part IB directly, or "
+                "consult the official appropriations act at "
+                "https://www.scstatehouse.gov/sess126_2025-2026/appropriations2025/tap1b.pdf"
+            )
+        else:
+            msg = (
                 "I cannot find relevant information in the retrieved source documents "
                 "to answer this question. Please verify against the official appropriations act "
                 "at https://www.scstatehouse.gov/sess126_2025-2026/appropriations2025/tap1a.htm"
-            ),
+            )
+        return {
+            "answer": msg,
             "citations": [],
             "chunks_retrieved": 0,
         }
@@ -588,7 +611,7 @@ def ask(req: AskRequest):
     try:
         response = claude.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=1024,
+            max_tokens=4096,
             system=ANTI_HALLUCINATION_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )

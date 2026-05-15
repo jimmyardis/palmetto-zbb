@@ -79,7 +79,7 @@ export default function ZBBSandbox() {
   async function suggestJustification(row: SandboxRow) {
     updateRow(row.lineItem.id, { suggestLoading: true })
     try {
-      const q = `Quote the exact proviso or policy language from Part IB that governs "${row.lineItem.description}" for ${agencyName} (Section ${selected}). Only quote verbatim text.`
+      const q = `What Part IB proviso requirements, spending conditions, or restrictions apply to "${row.lineItem.description}" in the ${agencyName} appropriation?`
       const resp = await api.ask(q, selected)
       updateRow(row.lineItem.id, {
         justificationText: resp.answer,
@@ -249,15 +249,24 @@ export default function ZBBSandbox() {
                               onChange={e => updateRow(li.id, { justificationText: e.target.value })}
                               rows={2}
                             />
-                            <button
-                              className="btn btn-ghost btn-sm"
-                              title="Suggest justification from Part IB proviso text"
-                              disabled={row.suggestLoading}
-                              onClick={() => suggestJustification(row)}
-                              style={{ flexShrink: 0, marginTop: 2 }}
-                            >
-                              {row.suggestLoading ? '…' : '✦ AI'}
-                            </button>
+                            {li.description.includes('ALLOC') ? (
+                              <span
+                                title="Allocation rows route funds to other entities. Part IB proviso conditions apply to the receiving program's section, not this entry — no proviso text to retrieve here."
+                                style={{ flexShrink: 0, marginTop: 2, fontSize: 11, color: 'var(--text-muted)', cursor: 'help', padding: '4px 6px' }}
+                              >
+                                ✦ N/A
+                              </span>
+                            ) : (
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                title="Suggest justification from Part IB proviso text"
+                                disabled={row.suggestLoading}
+                                onClick={() => suggestJustification(row)}
+                                style={{ flexShrink: 0, marginTop: 2 }}
+                              >
+                                {row.suggestLoading ? '…' : '✦ AI'}
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td>

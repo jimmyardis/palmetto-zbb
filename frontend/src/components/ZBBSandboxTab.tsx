@@ -192,10 +192,13 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
   async function suggestJustification(row: SandboxRow) {
     setSuggestingId(row.lineItemId)
     try {
-      const resp = await api.ask(
-        `Quote the exact proviso or policy language from Part IB that governs "${row.description}" for ${agencyName} (Section ${selectedSection}). Only quote verbatim text.`,
-        selectedSection
-      )
+      // Semantic content query (no task-instruction framing) + section filter.
+      // Prior attempt used instruction framing ("quote the proviso that governs…") which
+      // polluted the embedding with task meta-language. Prior attempt also dropped
+      // section_filter because linked_section type mismatch in backend caused silent
+      // chunk loss — that backend bug is now fixed.
+      const q = `Proviso spending conditions and restrictions for "${row.description}" in ${agencyName}`
+      const resp = await api.ask(q, selectedSection)
       updateRows(rows.map(r => r.lineItemId === row.lineItemId ? { ...r, justificationText: resp.answer } : r))
     } catch { /* silent */ } finally {
       setSuggestingId(null)
@@ -496,15 +499,22 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
                                 rows={2}
                                 style={{ minHeight: 36, fontSize: 11 }}
                               />
-                              <button
-                                className="btn btn-ghost btn-sm"
-                                title="Suggest from provisos"
-                                disabled={suggestingId === row.lineItemId}
-                                onClick={() => suggestJustification(row)}
-                                style={{ flexShrink: 0, fontSize: 10, padding: '4px 6px' }}
-                              >
-                                {suggestingId === row.lineItemId ? '…' : '✦'}
-                              </button>
+                              {row.description.includes('ALLOC') ? (
+                                <span
+                                  title="Allocation row — Part IB proviso conditions apply to the receiving program's section, not this entry"
+                                  style={{ flexShrink: 0, fontSize: 10, padding: '4px 6px', color: 'var(--text-muted)', cursor: 'help' }}
+                                >✦ N/A</span>
+                              ) : (
+                                <button
+                                  className="btn btn-ghost btn-sm"
+                                  title="Suggest from Part IB provisos"
+                                  disabled={suggestingId === row.lineItemId}
+                                  onClick={() => suggestJustification(row)}
+                                  style={{ flexShrink: 0, fontSize: 10, padding: '4px 6px' }}
+                                >
+                                  {suggestingId === row.lineItemId ? '…' : '✦'}
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td>

@@ -129,6 +129,27 @@ export default function OverviewTab({ agencies, onNavigateToAgency }: Props) {
 
   return (
     <div>
+      {/* Budget summary banner */}
+      {budgetSummary && (
+        <div style={{
+          background: 'var(--navy)', color: 'rgba(255,255,255,.9)',
+          margin: '-24px -24px 20px',
+          padding: '10px 24px',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 24px',
+          fontSize: 12, lineHeight: 1.4,
+        }}>
+          <span>H.4025 Recurring: <strong>{budgetSummary.recurring_total_display}</strong></span>
+          <span style={{ color: 'rgba(255,255,255,.3)' }}>·</span>
+          <span>Surplus: <strong>{budgetSummary.surplus_display}</strong></span>
+          <span style={{ color: 'rgba(255,255,255,.3)' }}>·</span>
+          <span>Capital Reserve Fund: <strong>{budgetSummary.capital_reserve_fund_display}</strong></span>
+          <span style={{ color: 'rgba(255,255,255,.3)' }}>·</span>
+          <span>Grand Total: <strong style={{ color: 'var(--gold)' }}>{budgetSummary.grand_total_display}</strong></span>
+          <span style={{ color: 'rgba(255,255,255,.3)' }}>·</span>
+          <span style={{ color: 'rgba(255,255,255,.5)' }}>Ratified May 28, 2025</span>
+        </div>
+      )}
+
       {/* Stat cards */}
       <div className="stat-grid">
         <div className="stat-card">
