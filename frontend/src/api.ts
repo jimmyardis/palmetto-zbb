@@ -31,10 +31,10 @@ export const api = {
   agency: (section: string) =>
     apiFetch<AgencyDetail>(`/agency/${encodeURIComponent(section)}`),
 
-  ask: (question: string, sectionFilter?: string) =>
+  ask: (question: string, sectionFilter?: string, mode: 'navigator' | 'suggest' = 'navigator') =>
     apiFetch<AskResponse>('/ask', {
       method: 'POST',
-      body: JSON.stringify({ question, section_filter: sectionFilter ?? null }),
+      body: JSON.stringify({ question, section_filter: sectionFilter ?? null, mode }),
     }),
 
   scenario: (section: string, cutPct: number) =>

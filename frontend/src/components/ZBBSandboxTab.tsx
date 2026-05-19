@@ -198,7 +198,7 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
       // section_filter because linked_section type mismatch in backend caused silent
       // chunk loss — that backend bug is now fixed.
       const q = `Proviso spending conditions and restrictions for "${row.description}" in ${agencyName}`
-      const resp = await api.ask(q, selectedSection)
+      const resp = await api.ask(q, selectedSection, 'suggest')
       updateRows(rows.map(r => r.lineItemId === row.lineItemId ? { ...r, justificationText: resp.answer } : r))
     } catch { /* silent */ } finally {
       setSuggestingId(null)
@@ -496,8 +496,8 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
                                 value={row.justificationText}
                                 onChange={e => updateRow(row.lineItemId, { justificationText: e.target.value })}
                                 placeholder="Justification…"
-                                rows={2}
-                                style={{ minHeight: 36, fontSize: 11 }}
+                                rows={3}
+                                style={{ flex: 1, minWidth: 180, minHeight: 60, fontSize: 11 }}
                               />
                               {row.description.includes('ALLOC') ? (
                                 <span

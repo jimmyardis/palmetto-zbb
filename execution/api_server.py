@@ -459,6 +459,7 @@ class AskRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=2000)
     section_filter: Optional[str] = None    # optional: limit to one section
     top_k: int = Field(default=20, ge=1, le=50)
+    mode: str = Field(default="navigator")  # "navigator" | "suggest"
 
 
 ANTI_HALLUCINATION_SYSTEM_PROMPT = """You are a neutral legislative budget analyst for the South Carolina General Assembly. You are assisting with analysis of the FY2025-2026 South Carolina Appropriations Act (H.4025, ratified May 28 2025).
@@ -555,6 +556,11 @@ def ask(req: AskRequest):
                 linked = [s.strip() for s in str(raw).split(",") if s.strip()]
             if req.section_filter not in linked:
                 continue
+            # In suggest mode, skip chunks that are only linked via General Provisions
+            # (section 117) — those are cross-agency and rarely answer line-item-specific
+            # questions. Only suppress if the chunk has no agency-specific link.
+            if req.mode == "suggest" and linked == ["117"]:
+                continue
         chunks.append({
             "score": match.score,
             "text": m.get("text_preview", ""),
@@ -565,16 +571,23 @@ def ask(req: AskRequest):
             "description": m.get("description", ""),
         })
 
+    # In suggest mode, if no chunk scores above 0.4 the context isn't useful — short-circuit.
+    if req.mode == "suggest" and chunks and all(c["score"] < 0.40 for c in chunks):
+        chunks = []
+
     if not chunks:
         if req.section_filter:
-            msg = (
-                "No Part IB proviso text was found for this line item in the retrieved source documents. "
-                "This is common for allocation rows (ALLOC OTHER ENTITIES, pass-through funds) where "
-                "Part IB conditions are attached to the receiving agency's section rather than the "
-                "appropriating agency. Check the relevant program section in Part IB directly, or "
-                "consult the official appropriations act at "
-                "https://www.scstatehouse.gov/sess126_2025-2026/appropriations2025/tap1b.pdf"
-            )
+            if req.mode == "suggest":
+                msg = f"No specific Part IB proviso applies to this line item in Section {req.section_filter}."
+            else:
+                msg = (
+                    "No Part IB proviso text was found for this line item in the retrieved source documents. "
+                    "This is common for allocation rows (ALLOC OTHER ENTITIES, pass-through funds) where "
+                    "Part IB conditions are attached to the receiving agency's section rather than the "
+                    "appropriating agency. Check the relevant program section in Part IB directly, or "
+                    "consult the official appropriations act at "
+                    "https://www.scstatehouse.gov/sess126_2025-2026/appropriations2025/tap1b.pdf"
+                )
         else:
             msg = (
                 "I cannot find relevant information in the retrieved source documents "
@@ -599,13 +612,27 @@ def ask(req: AskRequest):
     context_text = "\n\n---\n\n".join(context_parts)
 
     # Generate answer
+    if req.mode == "suggest":
+        format_instruction = (
+            "This is a ZBB justification suggestion request. "
+            "If the context contains a specific Part IB proviso for this line item, "
+            "quote the key requirement in 2-3 sentences and cite the source. "
+            "If the context does not contain a directly applicable proviso, respond with exactly one sentence: "
+            "'No specific Part IB proviso applies to this line item in Section {sec}.' "
+            "Do not provide numbered lists, recommendations, links, or lengthy explanations."
+        ).format(sec=req.section_filter or "this section")
+    else:
+        format_instruction = (
+            "Answer using ONLY the information in the context above. "
+            "Cite every factual claim with its source number."
+        )
+
     user_message = (
         f"RETRIEVED CONTEXT FROM SC APPROPRIATIONS DOCUMENTS:\n\n"
         f"{context_text}\n\n"
         f"---\n\n"
         f"QUESTION: {req.question}\n\n"
-        f"Answer using ONLY the information in the context above. "
-        f"Cite every factual claim with its source number."
+        f"{format_instruction}"
     )
 
     try:
@@ -1098,9 +1125,9 @@ def get_reconciliation():
             r.agency_name,
             r.total_funds      AS recap_total,
             r.general_funds    AS recap_gf,
-            COALESCE(SUM(CASE WHEN li.is_total_row=0 THEN li.total_funds END), 0) AS db_total,
-            COALESCE(SUM(CASE WHEN li.is_total_row=0 THEN li.general_funds END), 0) AS db_gf,
-            COUNT(CASE WHEN li.is_total_row=0 THEN 1 END) AS item_count
+            COALESCE(SUM(CASE WHEN li.is_total_row=0 AND li.fund_category='recurring' THEN li.total_funds END), 0) AS db_total,
+            COALESCE(SUM(CASE WHEN li.is_total_row=0 AND li.fund_category='recurring' THEN li.general_funds END), 0) AS db_gf,
+            COUNT(CASE WHEN li.is_total_row=0 AND li.fund_category='recurring' THEN 1 END) AS item_count
         FROM recapitulation r
         LEFT JOIN line_items li ON li.section_number = r.section_number
         GROUP BY r.section_number, r.agency_name, r.total_funds, r.general_funds
@@ -1152,8 +1179,18 @@ def get_reconciliation():
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 FRONTEND_SRC  = ROOT / "frontend"
 
+DOCS_DIR = ROOT / "docs"
+
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
+    # User guide — must be registered before the SPA catch-all
+    if DOCS_DIR.exists():
+        app.mount("/guide/screenshots", StaticFiles(directory=str(DOCS_DIR / "screenshots")), name="guide-screenshots")
+
+        @app.get("/guide")
+        def serve_guide():
+            return FileResponse(str(DOCS_DIR / "user-guide.html"))
 
     @app.get("/")
     def serve_frontend():

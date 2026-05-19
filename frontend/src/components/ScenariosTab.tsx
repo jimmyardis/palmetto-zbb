@@ -28,6 +28,7 @@ export default function ScenariosTab({ agencies }: Props) {
   const [slotB, setSlotB] = useState('')
   const [slotC, setSlotC] = useState('')
   const [exporting, setExporting] = useState<string | null>(null)
+  const [analysisSlot, setAnalysisSlot] = useState<'A' | 'B' | 'C'>('A')
 
   function getScenario(id: string): SavedScenario | null {
     return scenarios.find(s => s.id === id) ?? null
@@ -38,39 +39,46 @@ export default function ScenariosTab({ agencies }: Props) {
   const sC = slotC ? getScenario(slotC) : null
   const active = [sA, sB, sC].filter(Boolean) as SavedScenario[]
 
-  // Build comparison rows — union of all agency sections across active scenarios
+  const slotMap: Record<'A' | 'B' | 'C', SavedScenario | null> = { A: sA, B: sB, C: sC }
+  // primary for waterfall / analysis — follows analysisSlot, falls back to first active
+  const primary = slotMap[analysisSlot] ?? sA ?? sB ?? sC
+
+  // Build comparison rows — union of all agency sections across active scenarios.
+  // Baseline uses the scenario's own originalCents sum (not the agency summary total)
+  // because the summary total excludes ALLOC pass-through rows that the scenario stores.
   const sections = [...new Set(active.map(s => s.agencySection))]
   const agencyMap = new Map(agencies.map(a => [a.section_number, a]))
-
-  const comparisonRows = sections.map(sec => {
-    const baseline = agencyMap.get(sec)
-    const baselineCents = baseline?.total_funds_cents ?? 0
-    return {
-      sec,
-      name: baseline?.agency_name ?? sec,
-      baselineCents,
-      baselineDisplay: baseline?.total_funds_display ?? '—',
-      a: computeScenarioCents(sA, sec),
-      b: computeScenarioCents(sB, sec),
-      c: computeScenarioCents(sC, sec),
-    }
-  })
 
   function computeScenarioCents(s: SavedScenario | null, section: string): number | null {
     if (!s || s.agencySection !== section) return null
     return s.rows.filter(r => r.included).reduce((sum, r) => sum + r.justifiedCents, 0)
   }
 
-  // Waterfall data: deltas for scenario A (or first active)
-  const primary = sA ?? sB ?? sC
+  const comparisonRows = sections.map(sec => {
+    const firstScenario = active.find(s => s.agencySection === sec)
+    const baselineCents = firstScenario
+      ? firstScenario.rows.filter(r => r.included).reduce((sum, r) => sum + r.originalCents, 0)
+      : (agencyMap.get(sec)?.total_funds_cents ?? 0)
+    return {
+      sec,
+      name: agencyMap.get(sec)?.agency_name ?? firstScenario?.agencyName ?? sec,
+      baselineCents,
+      baselineDisplay: fmtCents(baselineCents),
+      a: computeScenarioCents(sA, sec),
+      b: computeScenarioCents(sB, sec),
+      c: computeScenarioCents(sC, sec),
+    }
+  })
+
+  // Waterfall data: deltas for the analysisSlot scenario
   const waterfallData = primary
     ? (() => {
         const sec = primary.agencySection
-        const baseline = agencyMap.get(sec)?.total_funds_cents ?? 0
+        const baseline = primary.rows.filter(r => r.included).reduce((s, r) => s + r.originalCents, 0)
         const proposed = primary.rows.filter(r => r.included).reduce((s, r) => s + r.justifiedCents, 0)
         const deltas = primary.rows
           .filter(r => r.included && r.justifiedCents !== r.originalCents)
-          .map(r => ({ name: r.description.slice(0, 24), delta: r.justifiedCents - r.originalCents }))
+          .map(r => ({ name: r.description.slice(0, 24), delta: (r.justifiedCents - r.originalCents) / 100 }))
           .sort((a, b) => a.delta - b.delta)
           .slice(0, 15)
         return { sec, baseline, proposed, deltas }
@@ -252,13 +260,21 @@ export default function ScenariosTab({ agencies }: Props) {
                     {[row.a, row.b, row.c].slice(0, active.length).flatMap((v, i) => {
                       if (v === null) return [<td key={`v${i}`} className="num">—</td>, <td key={`d${i}`} className="num">—</td>]
                       const delta = v - row.baselineCents
-                      const isOver = delta > 0
+                      const pct = row.baselineCents > 0 ? Math.round(delta * 100 / row.baselineCents) : 0
                       const isCut = delta < 0
+                      const isOver = delta > 0
                       return [
                         <td key={`v${i}`} className="num">{fmtCents(v)}</td>,
                         <td key={`d${i}`} className="num"
                           style={{ color: isOver ? 'var(--success)' : isCut ? 'var(--danger)' : 'inherit', fontWeight: delta !== 0 ? 600 : 400 }}>
-                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '−'}${fmtCents(Math.abs(delta))}`}
+                          {delta === 0 ? '—' : (
+                            <>
+                              {delta > 0 ? '+' : '−'}{fmtCents(Math.abs(delta))}
+                              <span style={{ fontSize: 10, fontWeight: 400, marginLeft: 4, opacity: 0.75 }}>
+                                ({Math.abs(pct)}%)
+                              </span>
+                            </>
+                          )}
                         </td>
                       ]
                     })}
@@ -274,18 +290,30 @@ export default function ScenariosTab({ agencies }: Props) {
       {waterfallData && waterfallData.deltas.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h3>
-              {primary!.name} — Line Item Changes
-            </h3>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {waterfallData.sec} · {agencyMap.get(waterfallData.sec)?.agency_name}
-            </span>
+            <h3>{primary!.name} — Line Item Changes</h3>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              {(['A', 'B', 'C'] as const).filter(s => slotMap[s]).map(s => (
+                <button
+                  key={s}
+                  className={`btn btn-sm ${analysisSlot === s ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setAnalysisSlot(s)}
+                  style={{ fontSize: 11 }}
+                >
+                  {s}: {slotMap[s]!.name}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="card-body" style={{ padding: '12px 4px' }}>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '0 16px 8px' }}>
               Baseline: {fmtCents(waterfallData.baseline)} →
               Proposed: <strong style={{ color: 'var(--gold)' }}>{fmtCents(waterfallData.proposed)}</strong>
-              &nbsp;({waterfallData.baseline > 0 ? `${Math.round((waterfallData.baseline - waterfallData.proposed) * 100 / waterfallData.baseline)}%` : ''} change)
+              {waterfallData.baseline > 0 && (() => {
+                const pct = Math.round((waterfallData.baseline - waterfallData.proposed) * 100 / waterfallData.baseline)
+                return <span style={{ color: pct > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                  &nbsp;({pct > 0 ? `−${pct}% reduction` : `+${Math.abs(pct)}% increase`})
+                </span>
+              })()}
             </div>
             <ResponsiveContainer width="100%" height={Math.max(200, waterfallData.deltas.length * 28)}>
               <BarChart
@@ -314,7 +342,10 @@ export default function ScenariosTab({ agencies }: Props) {
       {primary && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div className="card">
-            <div className="card-header"><h3>Top 10 Cuts</h3></div>
+            <div className="card-header">
+              <h3>Top 10 Cuts</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{primary.name}</span>
+            </div>
             <div className="card-body" style={{ padding: 0 }}>
               {topCuts.length === 0 ? (
                 <div className="empty" style={{ padding: 20 }}>No cuts in this scenario</div>
@@ -349,7 +380,10 @@ export default function ScenariosTab({ agencies }: Props) {
           </div>
 
           <div className="card">
-            <div className="card-header"><h3>Warnings</h3></div>
+            <div className="card-header">
+              <h3>Warnings</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{primary.name}</span>
+            </div>
             <div className="card-body stack" style={{ gap: 12 }}>
               {fedWarnings.length > 0 ? (
                 <div className="alert alert-warn">

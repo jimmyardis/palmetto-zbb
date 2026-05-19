@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react'
+import { marked } from 'marked'
 import { api } from '../api'
 import type { AskResponse, AskCitation } from '../types'
+
+marked.use({ gfm: true, breaks: true })
 
 interface HistoryEntry {
   question: string
@@ -18,45 +21,26 @@ const EXAMPLES = [
   'What nonrecurring funds were allocated and why?',
 ]
 
-// Annotate answer text: verified ✓ or unverified ⚠ for dollar figures
+// Annotate answer text: parse markdown, then badge dollar figures ✓ / ⚠
 function AnnotatedAnswer({ text, citations }: { text: string; citations: AskCitation[] }) {
   const citedText = citations.map(c => c.text_preview).join(' ')
   const dollarRe = /\$[\d,]+(?:\.\d+)?(?:\s*(?:billion|million|thousand|B|M|K))?/g
 
-  const parts: React.ReactNode[] = []
-  let last = 0
-  let match: RegExpExecArray | null
-  let key = 0
-
-  while ((match = dollarRe.exec(text)) !== null) {
-    if (match.index > last) parts.push(text.slice(last, match.index))
-    const figure = match[0]
-    const normalized = figure.replace(/\s+/g, '').replace(/,/g, '')
+  // Convert markdown → HTML, then annotate dollar figures in the HTML string
+  const html = marked.parse(text) as string
+  const annotated = html.replace(dollarRe, (figure) => {
+    const normalized = figure.replace(/[\s,]/g, '')
     const isCited = citedText.replace(/,/g, '').includes(normalized)
-    parts.push(
-      <span key={key++}>
-        {isCited ? (
-          <span title="Figure appears verbatim in retrieved source context">
-            {figure}
-            <span className="cite-badge verified" style={{ marginLeft: 2 }}>✓</span>
-          </span>
-        ) : (
-          <span className="uncited-dollar" title="Not found verbatim in retrieved context — verify against source document">
-            ⚠ [Verify: {figure}]
-          </span>
-        )}
-      </span>
-    )
-    last = match.index + figure.length
-  }
-  if (last < text.length) parts.push(text.slice(last))
+    return isCited
+      ? `${figure}<span class="cite-badge verified" title="Figure appears verbatim in retrieved source context" style="margin-left:2px">✓</span>`
+      : `<span class="uncited-dollar" title="Not found verbatim in retrieved context — verify against source document">⚠ [Verify: ${figure}]</span>`
+  })
 
-  // Render as paragraphs
-  const joined = parts
   return (
-    <div className="answer-box">
-      {joined}
-    </div>
+    <div
+      className="answer-box answer-markdown"
+      dangerouslySetInnerHTML={{ __html: annotated }}
+    />
   )
 }
 
