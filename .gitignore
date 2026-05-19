@@ -10,3 +10,4 @@ ingestion.log
 node_modules/
 frontend/dist/
 .venv/
+ingestion_prior.log
