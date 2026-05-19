@@ -125,6 +125,13 @@ export default function HelpModal({ onClose }: Props) {
           <p className="help-kbd-hint">
             Tip: press <kbd>?</kbd> anywhere to open or close this guide.
           </p>
+
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <a href="/guide" target="_blank" rel="noopener noreferrer"
+               style={{ fontSize: 13, color: 'var(--navy)', textDecoration: 'underline' }}>
+              Open full User Guide ↗
+            </a>
+          </div>
         </div>
       </div>
     </div>
