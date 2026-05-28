@@ -285,6 +285,24 @@ tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .proviso-card.federal { border-left-color: var(--warn); }
 .proviso-card .proviso-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ── Insights (Claude ZBB Analysis) ────────────────────────────────────── */
+.insights-body { font-size: 13px; line-height: 1.65; color: var(--text); }
+.insights-body h1 { font-size: 16px; font-weight: 700; color: var(--navy); margin: 20px 0 6px; }
+.insights-body h2 { font-size: 14px; font-weight: 700; color: var(--navy); margin: 16px 0 5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.insights-body h3 { font-size: 13px; font-weight: 600; color: var(--sc-green, #1B5E2A); margin: 12px 0 4px; }
+.insights-body h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 10px 0 3px; text-transform: uppercase; letter-spacing: .04em; }
+.insights-body p { margin-bottom: 8px; }
+.insights-body ul, .insights-body ol { padding-left: 18px; margin-bottom: 8px; }
+.insights-body li { margin-bottom: 4px; }
+.insights-body strong { color: var(--navy); }
+.insights-body em { color: var(--text-muted); font-style: italic; }
+.insights-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0 14px; }
+.insights-body th { background: var(--light-blue); font-weight: 600; text-align: left; padding: 5px 8px; border: 1px solid var(--border); }
+.insights-body td { padding: 4px 8px; border: 1px solid var(--border); vertical-align: top; }
+.insights-body tr:nth-child(even) td { background: var(--surface); }
+.insights-body hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.insights-body blockquote { border-left: 3px solid var(--gold); padding-left: 10px; color: var(--text-muted); margin: 8px 0; }
+
 /* ── History / Navigator ────────────────────────────────────────────────── */
 .history-item {
   padding: 10px 14px; cursor: pointer;

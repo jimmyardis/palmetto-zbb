@@ -221,3 +221,18 @@ export interface DecisionUnit {
 }
 
 export type PriorityTier = 'Mandated' | 'High' | 'Medium' | 'Low'
+
+// ── Agency Insights (Claude ZBB Analysis) ────────────────────────────────
+export interface InsightsResponse {
+  agency: string
+  section: string
+  fiscal_year: string
+  total_funds_display: string
+  general_funds_display: string
+  other_funds_display: string
+  line_item_count: number
+  analysis: string   // markdown
+  model: string
+  generated_at: string
+  data_note: string
+}

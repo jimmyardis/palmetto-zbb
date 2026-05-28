@@ -1,7 +1,7 @@
 import type {
   AgenciesResponse, AgencyDetail, AskResponse,
   ScenarioResponse, ReconciliationResponse, HealthResponse,
-  SummaryResponse, DecisionUnit,
+  SummaryResponse, DecisionUnit, InsightsResponse,
 } from './types'
 
 const BASE = ''  // relative URLs — same origin in production, Vite proxies in dev
@@ -68,4 +68,7 @@ export const api = {
 
   reconciliation: () =>
     apiFetch<ReconciliationResponse>('/reconciliation'),
+
+  insights: (section: string) =>
+    apiFetch<InsightsResponse>(`/agency/${encodeURIComponent(section)}/insights`),
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { marked } from 'marked'
 import { api } from '../api'
-import type { AgencySummary, AgencyDetail, LineItem } from '../types'
+import type { AgencySummary, AgencyDetail, LineItem, InsightsResponse } from '../types'
 
 // Citation badge shown next to every dollar figure
 function CiteBadge({ citation }: { citation: LineItem['citation'] }) {
@@ -27,6 +28,12 @@ export default function AgencyExplorer() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
 
+  // Insights panel state
+  const [rightPanel, setRightPanel] = useState<'provisos' | 'insights'>('provisos')
+  const [insights, setInsights] = useState<InsightsResponse | null>(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsError, setInsightsError] = useState('')
+
   useEffect(() => {
     api.agencies()
       .then(r => setAgencies([...r.agencies].sort((a, b) =>
@@ -45,10 +52,23 @@ export default function AgencyExplorer() {
     setSelected(section)
     setLoading(true)
     setError('')
+    setInsights(null)
+    setInsightsError('')
+    setRightPanel('provisos')
     api.agency(section)
       .then(setDetail)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
+  }
+
+  function runInsights() {
+    if (!selected) return
+    setInsightsLoading(true)
+    setInsightsError('')
+    setRightPanel('insights')
+    api.insights(selected)
+      .then(r => { setInsights(r); setInsightsLoading(false) })
+      .catch(e => { setInsightsError(e.message); setInsightsLoading(false) })
   }
 
   // Group line items by subsection
@@ -115,6 +135,15 @@ export default function AgencyExplorer() {
                   <h2>{detail.agency_name}</h2>
                   <span className="section-tag" style={{ marginTop: 4 }}>Section {detail.section_number}</span>
                 </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={runInsights}
+                  disabled={insightsLoading}
+                  title="Run a full ZBB analyst report using Claude Sonnet — takes 30–60 seconds"
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {insightsLoading ? '⏳ Analyzing…' : '✦ Analyze with Claude'}
+                </button>
               </div>
               <div className="card-body">
                 <div className="stat-grid">
@@ -210,38 +239,94 @@ export default function AgencyExplorer() {
             </div>
           </div>
 
-          {/* Right: provisos */}
+          {/* Right: provisos / insights panel */}
           <div className="stack">
             <div className="card">
               <div className="card-header">
-                <h2>Provisos & Policy Text</h2>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                  {detail.provisos.length > 0
-                    ? `${detail.provisos.length} retrieved`
-                    : 'RAG not available'}
-                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className={`btn ${rightPanel === 'provisos' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    onClick={() => setRightPanel('provisos')}
+                  >
+                    Provisos
+                  </button>
+                  <button
+                    className={`btn ${rightPanel === 'insights' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    onClick={() => { if (!insights && !insightsLoading) runInsights(); else setRightPanel('insights') }}
+                  >
+                    ✦ ZBB Analysis
+                  </button>
+                </div>
+                {rightPanel === 'provisos' && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                    {detail.provisos.length > 0 ? `${detail.provisos.length} retrieved` : 'RAG not available'}
+                  </span>
+                )}
+                {rightPanel === 'insights' && insights && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                    {insights.model} · {new Date(insights.generated_at).toLocaleTimeString()}
+                  </span>
+                )}
               </div>
               <div className="card-body">
-                {detail.provisos.length === 0 ? (
-                  <div className="alert alert-info">
-                    Proviso text retrieval requires Phase 1C Pinecone ingestion to complete.
-                  </div>
-                ) : (
-                  <div className="proviso-panel">
-                    {detail.provisos.map((p, i) => (
-                      <div key={i} className="proviso-item">
-                        <div className="proviso-meta">
-                          <span className="proviso-score">Score: {p.score}</span>
-                          <span className="proviso-src">
-                            {p.source_doc} · p.{p.page_number}
-                            {p.linked_section && ` · §${p.linked_section}`}
-                          </span>
+
+                {/* Provisos tab */}
+                {rightPanel === 'provisos' && (
+                  detail.provisos.length === 0 ? (
+                    <div className="alert alert-info">
+                      Proviso text retrieval requires Phase 1C Pinecone ingestion to complete.
+                    </div>
+                  ) : (
+                    <div className="proviso-panel">
+                      {detail.provisos.map((p, i) => (
+                        <div key={i} className="proviso-item">
+                          <div className="proviso-meta">
+                            <span className="proviso-score">Score: {p.score}</span>
+                            <span className="proviso-src">
+                              {p.source_doc} · p.{p.page_number}
+                              {p.linked_section && ` · §${p.linked_section}`}
+                            </span>
+                          </div>
+                          <p>{p.text}</p>
                         </div>
-                        <p>{p.text}</p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )
                 )}
+
+                {/* Insights tab */}
+                {rightPanel === 'insights' && (
+                  <>
+                    {insightsLoading && (
+                      <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                        <div className="loading" style={{ marginBottom: 8 }}>Running ZBB analysis…</div>
+                        <p style={{ fontSize: 12 }}>Claude is reading all line items and provisos.<br />This takes 30–60 seconds.</p>
+                      </div>
+                    )}
+                    {insightsError && (
+                      <div className="alert alert-danger">{insightsError}</div>
+                    )}
+                    {insights && !insightsLoading && (
+                      <>
+                        <div
+                          className="insights-body"
+                          dangerouslySetInnerHTML={{ __html: marked.parse(insights.analysis) as string }}
+                        />
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                          {insights.data_note}
+                        </p>
+                      </>
+                    )}
+                    {!insights && !insightsLoading && !insightsError && (
+                      <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                        <p>Click <strong>✦ Analyze with Claude</strong> above to run a full ZBB analyst report for this agency.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
               </div>
             </div>
           </div>

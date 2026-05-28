@@ -670,6 +670,198 @@ def ask(req: AskRequest):
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# GET /agency/{section_number}/insights
+# ════════════════════════════════════════════════════════════════════════════
+
+INSIGHTS_SYSTEM_PROMPT = """You are a senior ZBB (zero-based budgeting) analyst advising the South Carolina General Assembly.
+
+Your task: analyze the actual H.4025 line-item appropriations for a specific SC state agency and produce a structured, actionable ZBB report that legislative staff and fiscal analysts can use to fill in Justified Amounts and write justifications in the Decision Package.
+
+YOU HAVE TWO TYPES OF KNOWLEDGE:
+
+1. SC BUDGET FACTS (line-item data provided): Authoritative. When citing a specific dollar amount from the data, attribute it to H.4025. Never fabricate or calculate dollar figures not in the data.
+
+2. POLICY ANALYSIS & PEER BENCHMARKS (from your training): You ARE permitted — and expected — to draw on your knowledge of corrections systems, privatization practices, per-inmate costs in peer states, federal grant programs, staffing benchmarks, and ZBB reform best practices. Clearly label this content as "Policy Analysis" or "Peer Benchmark" so readers know it is not a SC budget figure.
+
+OUTPUT FORMAT — produce all of the following sections in markdown:
+
+## Executive Summary
+3-4 sentences: agency budget profile, the dominant cost driver, General Fund dependency, and the core ZBB opportunity.
+
+## Decision Unit Analysis
+For each program area / subsection, include:
+- Program name and total appropriation (from data, cite H.4025)
+- Recommended ZBB Priority Tier: Mandated / High / Medium / Low — with a 1-sentence rationale
+- 2-3 analyst questions that must be answered before the Justified Amount can be set
+- Any efficiency or privatization flags specific to this line
+
+## Federal Match Risk Assessment
+For any lines flagged with federal match exposure: explain what happens to federal dollars if the GF line is reduced, and what the analyst needs to verify.
+
+## Efficiency & Reform Opportunities
+For each opportunity:
+- Specific line item(s) involved (with H.4025 dollar amount)
+- Reform approach (privatization, consolidation, outsourcing, etc.)
+- What peer states do (FL, GA, NC, TN, TX) — label as Policy Analysis
+- Realistic savings range — label clearly as estimate, not SC data
+
+## Peer State Benchmarks (Policy Analysis)
+2-3 concrete comparisons to peer Southern states on corrections-relevant metrics (cost per inmate, staffing ratios, privatization share, etc.). Label all as Policy Analysis.
+
+## ZBB Analyst Action Checklist
+A numbered list of the 8-12 most important verification steps before the Decision Package is finalized for this agency.
+
+Be specific — reference actual line items by name and dollar amount. Be honest about uncertainty. Do not fabricate peer state figures."""
+
+
+@app.get("/agency/{section_number}/insights")
+def agency_insights(section_number: str):
+    """
+    Claude-powered ZBB analysis for a specific agency.
+    Combines actual H.4025 line items with policy knowledge and peer benchmarks.
+    Returns a structured markdown report. Allow 30-60 seconds — this calls the LLM.
+    """
+    from collections import defaultdict
+
+    claude = get_claude()
+    if not claude:
+        raise HTTPException(503, "ANTHROPIC_API_KEY not set.")
+
+    conn = get_db()
+
+    recap = conn.execute(
+        "SELECT agency_name, total_funds, general_funds FROM recapitulation WHERE section_number=?",
+        (section_number,)
+    ).fetchone()
+    if not recap:
+        conn.close()
+        raise HTTPException(404, f"Section {section_number} not found.")
+
+    # Current-year line items only (exclude prior-year comparison rows)
+    items = conn.execute("""
+        SELECT subsection_name, line_item_description,
+               general_funds, federal_funds, other_funds, total_funds,
+               has_federal_match, federal_match_note, source_doc, page_number
+        FROM line_items
+        WHERE section_number=? AND is_total_row=0 AND (fund_category IS NULL OR fund_category != 'prior_year')
+        ORDER BY id
+    """, (section_number,)).fetchall()
+    conn.close()
+
+    if not items:
+        raise HTTPException(404, f"No line items found for section {section_number}.")
+
+    agency_name   = recap["agency_name"]
+    total_cents   = recap["total_funds"] or 0
+    gf_cents      = recap["general_funds"] or 0
+    other_cents   = total_cents - gf_cents
+    total_display = cents_to_dollars_str(total_cents)
+    gf_display    = cents_to_dollars_str(gf_cents)
+    other_display = cents_to_dollars_str(other_cents)
+
+    # Build prompt — group by subsection
+    subsections: dict = defaultdict(list)
+    for it in items:
+        subsections[it["subsection_name"] or "GENERAL"].append(it)
+
+    prompt_lines = [
+        f"AGENCY: {agency_name}",
+        f"SECTION: {section_number}",
+        f"FISCAL YEAR: {FISCAL_YEAR}",
+        f"SOURCE: H.4025, SC FY{FISCAL_YEAR} Appropriations Act, ratified May 28 2025",
+        "",
+        "APPROPRIATIONS TOTALS (Recapitulation, Part IA):",
+        f"  Total Funds:   {total_display}",
+        f"  General Funds: {gf_display}",
+        f"  Other Funds:   {other_display}",
+        "",
+        "LINE ITEMS BY PROGRAM AREA:",
+    ]
+
+    for subsec, sub_items in subsections.items():
+        prompt_lines.append(f"\n--- {subsec} ---")
+        for it in sub_items:
+            gf  = cents_to_dollars_str(it["general_funds"] or 0)
+            oth = cents_to_dollars_str(it["other_funds"] or 0)
+            tot = cents_to_dollars_str(it["total_funds"] or 0)
+            fed = "  ⚠ FEDERAL MATCH FLAG" if it["has_federal_match"] else ""
+            prompt_lines.append(f"  {it['line_item_description']}: GF={gf}, Other={oth}, Total={tot}{fed}")
+            if it["has_federal_match"] and it["federal_match_note"]:
+                note = (it["federal_match_note"] or "")[:300].strip()
+                prompt_lines.append(f"    [Proviso note: {note}]")
+
+    prompt_lines.append("")
+
+    # Retrieve provisos from Pinecone
+    proviso_text = ""
+    try:
+        voyage = get_voyage()
+        idx    = get_pinecone()
+        if voyage and idx:
+            query_str = f"Section {section_number} {agency_name} budget appropriations provisions"
+            emb = voyage.embed([query_str], model=VOYAGE_MODEL, input_type="query").embeddings[0]
+            results = idx.query(
+                vector=emb, top_k=15, namespace=PINECONE_NS,
+                filter={"linked_section": {"$eq": section_number}},
+                include_metadata=True,
+            )
+            if not results.matches or all(m.score < MIN_SCORE for m in results.matches):
+                results = idx.query(
+                    vector=emb, top_k=10, namespace=PINECONE_NS, include_metadata=True
+                )
+            parts = []
+            for m in results.matches:
+                if m.score >= MIN_SCORE:
+                    meta = m.metadata or {}
+                    parts.append(
+                        f"[{meta.get('source_pdf', '')}, p.{meta.get('page_number', '')}]\n"
+                        f"{meta.get('text_preview', '')}"
+                    )
+            if parts:
+                proviso_text = "RELEVANT PART IB PROVISOS:\n\n" + "\n\n---\n\n".join(parts[:10])
+    except Exception as e:
+        log.warning("Pinecone query failed for insights/%s: %s", section_number, e)
+
+    user_message = "\n".join(prompt_lines)
+    if proviso_text:
+        user_message += "\n\n" + proviso_text
+    user_message += (
+        f"\n\n---\n\nPlease produce a full ZBB analyst report for {agency_name} "
+        f"(Section {section_number}) per the format in your instructions."
+    )
+
+    try:
+        response = claude.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4096,
+            system=INSIGHTS_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        analysis_text = response.content[0].text
+    except Exception as e:
+        raise HTTPException(502, f"Claude analysis failed: {e}")
+
+    return {
+        "agency": agency_name,
+        "section": section_number,
+        "fiscal_year": FISCAL_YEAR,
+        "total_funds_display": total_display,
+        "general_funds_display": gf_display,
+        "other_funds_display": other_display,
+        "line_item_count": len(items),
+        "analysis": analysis_text,
+        "model": CLAUDE_MODEL,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_note": (
+            "Dollar figures in this analysis are verbatim from H.4025 (Part IA). "
+            "Peer benchmarks and efficiency estimates are Claude policy analysis — "
+            "not SC budget figures. Verify all policy recommendations against official "
+            "appropriations act and agency records before acting."
+        ),
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # POST /scenario
 # ════════════════════════════════════════════════════════════════════════════
 
