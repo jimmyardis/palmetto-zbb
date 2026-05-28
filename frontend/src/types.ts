@@ -236,3 +236,14 @@ export interface InsightsResponse {
   generated_at: string
   data_note: string
 }
+
+export interface StructuredUnit {
+  subsection: string
+  recommended_tier: 'Mandated' | 'High' | 'Medium' | 'Low'
+  pre_fill_text: string
+  peer_benchmark: string
+}
+
+export interface StructuredInsightsResponse extends InsightsResponse {
+  units: StructuredUnit[]
+}

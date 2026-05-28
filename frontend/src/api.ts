@@ -1,7 +1,7 @@
 import type {
   AgenciesResponse, AgencyDetail, AskResponse,
   ScenarioResponse, ReconciliationResponse, HealthResponse,
-  SummaryResponse, DecisionUnit, InsightsResponse,
+  SummaryResponse, DecisionUnit, InsightsResponse, StructuredInsightsResponse,
 } from './types'
 
 const BASE = ''  // relative URLs — same origin in production, Vite proxies in dev
@@ -48,6 +48,7 @@ export const api = {
     sectionNumber: string,
     decisionUnits: DecisionUnit[],
     preparerName?: string,
+    includeInsights?: boolean,
   ) => {
     const res = await fetch(BASE + '/sandbox/export', {
       method: 'POST',
@@ -57,6 +58,7 @@ export const api = {
         section_number: sectionNumber,
         decision_units: decisionUnits,
         preparer_name: preparerName,
+        include_insights: includeInsights ?? false,
       }),
     })
     if (!res.ok) throw new Error(`Export failed: ${res.statusText}`)
@@ -71,4 +73,7 @@ export const api = {
 
   insights: (section: string) =>
     apiFetch<InsightsResponse>(`/agency/${encodeURIComponent(section)}/insights`),
+
+  insightsStructured: (section: string) =>
+    apiFetch<StructuredInsightsResponse>(`/agency/${encodeURIComponent(section)}/insights?structured=true`),
 }

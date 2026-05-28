@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../api'
-import type { AgencySummary, Citation } from '../types'
+import type { AgencySummary, Citation, StructuredUnit } from '../types'
 import { useScenarios } from '../hooks/useScenarios'
 import type { ScenarioSandboxRow } from '../hooks/useScenarios'
 
@@ -68,6 +68,13 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
 
   // Suggest justification state
   const [suggestingId, setSuggestingId] = useState<number | null>(null)
+
+  // Pre-fill from Claude state
+  const [prefillLoading, setPrefillLoading] = useState(false)
+  const [prefillError, setPrefillError] = useState('')
+
+  // Export options
+  const [includeInsights, setIncludeInsights] = useState(true)
 
   const prevSection = useRef('')
 
@@ -246,6 +253,40 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
     setHasUnsaved(false)
   }
 
+  function matchUnit(subsection: string | null, units: StructuredUnit[]): StructuredUnit | null {
+    if (!subsection) return null
+    const sub = subsection.toUpperCase()
+    return units.find(u => {
+      const key = u.subsection.split('.').slice(1).join('.').trim().toUpperCase().slice(0, 14)
+      return key && sub.includes(key)
+    }) ?? null
+  }
+
+  async function handlePrefill() {
+    if (!selectedSection) return
+    setPrefillLoading(true)
+    setPrefillError('')
+    try {
+      const result = await api.insightsStructured(selectedSection)
+      const units = result.units ?? []
+      setRows(prev => prev.map(row => {
+        const unit = matchUnit(row.subsection, units)
+        if (!unit) return row
+        return {
+          ...row,
+          priorityTier: unit.recommended_tier as PriorityTier,
+          justificationText: row.justificationText
+            ? row.justificationText
+            : unit.pre_fill_text + ' (Pre-filled by Claude — edit before saving)',
+        }
+      }))
+    } catch (e: unknown) {
+      setPrefillError((e as Error).message)
+    } finally {
+      setPrefillLoading(false)
+    }
+  }
+
   async function handleExport() {
     const included = rows.filter(r => r.included)
     if (!included.length) return
@@ -259,7 +300,8 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
           justification_text: r.justificationText || '(No justification provided)',
           priority_tier: r.priorityTier === 'Zero' ? 'Low' : r.priorityTier,
         })),
-        preparerName || undefined
+        preparerName || undefined,
+        includeInsights,
       )
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -354,6 +396,7 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
       </div>
 
       {error && <div className="alert alert-danger mb-16">{error}</div>}
+      {prefillError && <div className="alert alert-danger mb-16">Pre-fill error: {prefillError}</div>}
       {loading && <div className="loading">Loading line items…</div>}
 
       {rows.length > 0 && !loading && (
@@ -380,9 +423,26 @@ export default function ZBBSandboxTab({ agencies, initialSection, onSandboxChang
                   </select>
                   <button className="btn btn-ghost btn-sm" onClick={bulkSetTier}>Set Tier</button>
                   <button className="btn btn-ghost btn-sm" onClick={bulkZero}>Zero Out</button>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button className="btn btn-danger btn-sm" onClick={resetToZero}>↓ Zero All</button>
                     <button className="btn btn-outline btn-sm" onClick={resetToBaseline}>↑ Restore</button>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={handlePrefill}
+                      disabled={prefillLoading}
+                      title="Pre-fill blank justification fields with Claude's recommended tier and analyst questions (30–60 seconds)"
+                    >
+                      {prefillLoading ? '⏳ Pre-filling…' : '✦ Pre-fill from Claude'}
+                    </button>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={includeInsights}
+                        onChange={e => setIncludeInsights(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      Append analysis
+                    </label>
                     <button className="btn btn-gold btn-sm" onClick={handleExport} disabled={exporting}>
                       {exporting ? 'Exporting…' : '⬇ Export Word'}
                     </button>

@@ -673,6 +673,42 @@ def ask(req: AskRequest):
 # GET /agency/{section_number}/insights
 # ════════════════════════════════════════════════════════════════════════════
 
+STRUCTURED_INSIGHTS_SYSTEM_PROMPT = """You are a senior ZBB analyst advising the South Carolina General Assembly.
+
+Analyze the agency line items provided and respond in TWO parts — in this exact order:
+
+PART 1 — A JSON block wrapped in <structured> tags. Produce one entry per program-area subsection present in the data. Each entry must have exactly these four keys:
+- "subsection": the subsection name exactly as it appears in the data (e.g. "A. HOUSING, CARE, SECURITY, AND SUPERVISION")
+- "recommended_tier": one of Mandated / High / Medium / Low
+- "pre_fill_text": under 400 characters. Format: "Recommended tier: [TIER]. Before finalizing, verify: (1) ...; (2) ...; (3) ..." — specific, actionable questions referencing actual line item names and dollar amounts from the data.
+- "peer_benchmark": under 200 characters. One concrete peer-state comparison labeled "Policy Analysis:" — or "Policy Analysis: No reliable benchmark available for this program type." if uncertain.
+
+PART 2 — The full ZBB analyst report in markdown using this structure:
+## Executive Summary
+## Decision Unit Analysis
+## Federal Match Risk Assessment
+## Efficiency & Reform Opportunities
+## Peer State Benchmarks (Policy Analysis)
+## ZBB Analyst Action Checklist
+
+Rules: SC dollar figures must match the data exactly. Peer benchmarks and estimates must be labeled "Policy Analysis". Do not fabricate peer figures.
+
+Example output format:
+<structured>
+[
+  {
+    "subsection": "I. INTERNAL ADMIN & SUPPORT",
+    "recommended_tier": "Medium",
+    "pre_fill_text": "Recommended tier: Medium. Before finalizing, verify: (1) sub-object breakdown of Other Operating Expenses ($27,537,709); (2) FTE count vs. administrative FTE ratio; (3) shared-services consolidation opportunities with peer criminal justice agencies.",
+    "peer_benchmark": "Policy Analysis: Administrative overhead in peer Southern DOC agencies typically runs 5-8% of total budget. SC Internal Admin is approximately 6.5% — within normal range."
+  }
+]
+</structured>
+
+## Executive Summary
+[narrative continues here...]"""
+
+
 INSIGHTS_SYSTEM_PROMPT = """You are a senior ZBB (zero-based budgeting) analyst advising the South Carolina General Assembly.
 
 Your task: analyze the actual H.4025 line-item appropriations for a specific SC state agency and produce a structured, actionable ZBB report that legislative staff and fiscal analysts can use to fill in Justified Amounts and write justifications in the Decision Package.
@@ -714,18 +750,104 @@ A numbered list of the 8-12 most important verification steps before the Decisio
 Be specific — reference actual line items by name and dollar amount. Be honest about uncertainty. Do not fabricate peer state figures."""
 
 
+def _get_structured_insights(section_number: str, agency_name: str, items) -> dict:
+    """
+    Internal helper: calls Claude with STRUCTURED_INSIGHTS_SYSTEM_PROMPT and returns
+    {"units": [...], "narrative": "..."}.  Falls back to {"units": [], "narrative": ""} on any error.
+    """
+    from collections import defaultdict
+    import json as _json
+
+    claude = get_claude()
+    if not claude:
+        return {"units": [], "narrative": ""}
+
+    subsections: dict = defaultdict(list)
+    for it in items:
+        subsections[it["subsection_name"] or "GENERAL"].append(it)
+
+    prompt_lines = [
+        f"AGENCY: {agency_name}",
+        f"SECTION: {section_number}",
+        f"FISCAL YEAR: {FISCAL_YEAR}",
+        f"SOURCE: H.4025, SC FY{FISCAL_YEAR} Appropriations Act, ratified May 28 2025",
+        "",
+        "LINE ITEMS BY PROGRAM AREA:",
+    ]
+    for subsec, sub_items in subsections.items():
+        prompt_lines.append(f"\n--- {subsec} ---")
+        for it in sub_items:
+            gf  = cents_to_dollars_str(it["general_funds"] or 0)
+            oth = cents_to_dollars_str(it["other_funds"] or 0)
+            tot = cents_to_dollars_str(it["total_funds"] or 0)
+            fed = "  ⚠ FED MATCH" if it["has_federal_match"] else ""
+            prompt_lines.append(f"  {it['line_item_description']}: GF={gf}, Other={oth}, Total={tot}{fed}")
+
+    # Retrieve provisos
+    proviso_text = ""
+    try:
+        voyage = get_voyage()
+        idx    = get_pinecone()
+        if voyage and idx:
+            emb = voyage.embed(
+                [f"Section {section_number} {agency_name} budget provisions"],
+                model=VOYAGE_MODEL, input_type="query"
+            ).embeddings[0]
+            results = idx.query(
+                vector=emb, top_k=10, namespace=PINECONE_NS,
+                filter={"linked_section": {"$eq": section_number}},
+                include_metadata=True,
+            )
+            if not results.matches or all(m.score < MIN_SCORE for m in results.matches):
+                results = idx.query(vector=emb, top_k=6, namespace=PINECONE_NS, include_metadata=True)
+            parts = [
+                f"[{(m.metadata or {}).get('source_pdf','')}]\n{(m.metadata or {}).get('text_preview','')}"
+                for m in results.matches if m.score >= MIN_SCORE
+            ]
+            if parts:
+                proviso_text = "\n\nRELEVANT PROVISOS:\n\n" + "\n\n---\n\n".join(parts[:6])
+    except Exception as e:
+        log.warning("Pinecone failed in _get_structured_insights: %s", e)
+
+    user_message = "\n".join(prompt_lines) + proviso_text + (
+        f"\n\n---\n\nProduce the structured JSON block and full ZBB report for {agency_name} (Section {section_number})."
+    )
+
+    try:
+        resp = claude.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4096,
+            system=STRUCTURED_INSIGHTS_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        raw = resp.content[0].text
+    except Exception as e:
+        log.warning("Claude call failed in _get_structured_insights: %s", e)
+        return {"units": [], "narrative": ""}
+
+    # Parse <structured>...</structured> block
+    units: list = []
+    narrative = raw
+    try:
+        start = raw.index("<structured>") + len("<structured>")
+        end   = raw.index("</structured>")
+        json_block = raw[start:end].strip()
+        units = _json.loads(json_block)
+        narrative = raw[end + len("</structured>"):].strip()
+    except (ValueError, _json.JSONDecodeError) as e:
+        log.warning("Could not parse structured block: %s", e)
+
+    return {"units": units, "narrative": narrative}
+
+
 @app.get("/agency/{section_number}/insights")
-def agency_insights(section_number: str):
+def agency_insights(section_number: str, structured: bool = False):
     """
     Claude-powered ZBB analysis for a specific agency.
     Combines actual H.4025 line items with policy knowledge and peer benchmarks.
     Returns a structured markdown report. Allow 30-60 seconds — this calls the LLM.
     """
     from collections import defaultdict
-
-    claude = get_claude()
-    if not claude:
-        raise HTTPException(503, "ANTHROPIC_API_KEY not set.")
 
     conn = get_db()
 
@@ -758,6 +880,30 @@ def agency_insights(section_number: str):
     total_display = cents_to_dollars_str(total_cents)
     gf_display    = cents_to_dollars_str(gf_cents)
     other_display = cents_to_dollars_str(other_cents)
+
+    # Structured mode: delegate to helper and return with units array
+    if structured:
+        result = _get_structured_insights(section_number, agency_name, items)
+        return {
+            "agency": agency_name,
+            "section": section_number,
+            "fiscal_year": FISCAL_YEAR,
+            "total_funds_display": total_display,
+            "general_funds_display": gf_display,
+            "other_funds_display": other_display,
+            "line_item_count": len(items),
+            "units": result["units"],
+            "analysis": result["narrative"],
+            "model": CLAUDE_MODEL,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_note": (
+                "Dollar figures are verbatim from H.4025 (Part IA). "
+                "Peer benchmarks and pre_fill_text are Claude policy analysis — not SC budget figures."
+            ),
+        }
+
+    if not get_claude():
+        raise HTTPException(503, "ANTHROPIC_API_KEY not set.")
 
     # Build prompt — group by subsection
     subsections: dict = defaultdict(list)
@@ -1041,6 +1187,7 @@ class ExportRequest(BaseModel):
     section_number: str
     preparer_name: Optional[str] = None
     decision_units: list[DecisionUnit]
+    include_insights: bool = Field(default=False)
 
 
 @app.post("/sandbox/export")
@@ -1088,6 +1235,29 @@ def sandbox_export(req: ExportRequest):
     conn.close()
 
     db_map = {row["id"]: row for row in db_items}
+
+    # Optional: run Claude structured insights to pre-fill and append analysis
+    unit_map: dict = {}   # subsection_name -> {pre_fill_text, peer_benchmark}
+    insights_narrative: str = ""
+    if req.include_insights:
+        try:
+            _conn2 = get_db()
+            all_items = _conn2.execute("""
+                SELECT subsection_name, line_item_description,
+                       general_funds, federal_funds, other_funds, total_funds,
+                       has_federal_match, federal_match_note, source_doc, page_number
+                FROM line_items
+                WHERE section_number=? AND is_total_row=0
+                  AND (fund_category IS NULL OR fund_category != 'prior_year')
+                ORDER BY id
+            """, (req.section_number,)).fetchall()
+            _conn2.close()
+
+            result = _get_structured_insights(req.section_number, recap["agency_name"], all_items)
+            unit_map = {u["subsection"]: u for u in result.get("units", [])}
+            insights_narrative = result.get("narrative", "")
+        except Exception as e:
+            log.warning("Structured insights failed during export: %s", e)
 
     # Build Word document
     doc = Document()
@@ -1176,9 +1346,21 @@ def sandbox_export(req: ExportRequest):
             f"H.4025 FY{FISCAL_YEAR}]"
         )
 
-        # Justification
+        # Justification — use Claude pre-fill if analyst left it blank
+        subsec_key = db_item["subsection_name"] or ""
+        insight_unit = unit_map.get(subsec_key) or {}
+        jtext = du.justification_text
+        if (not jtext or jtext == "(No justification provided)") and insight_unit.get("pre_fill_text"):
+            jtext = insight_unit["pre_fill_text"]
         doc.add_paragraph("Justification:")
-        doc.add_paragraph(du.justification_text)
+        doc.add_paragraph(jtext)
+
+        # Peer benchmark row (only when insights are included)
+        if insight_unit.get("peer_benchmark"):
+            bench_p = doc.add_paragraph()
+            bench_r = bench_p.add_run(f"Peer Benchmark: {insight_unit['peer_benchmark']}")
+            bench_r.italic = True
+            bench_r.font.size = Pt(9)
 
         if db_item["has_federal_match"]:
             federal_match_items.append(db_item["line_item_description"])
@@ -1216,6 +1398,57 @@ def sandbox_export(req: ExportRequest):
         f"SC FY{FISCAL_YEAR} Appropriations Act (Part IA, tap1a.htm), ratified May 28 2025. "
         "No figures have been estimated or approximated."
     )
+
+    # Appendix A: Claude ZBB Analysis
+    if insights_narrative:
+        doc.add_page_break()
+        doc.add_heading("Appendix A — Claude ZBB Analysis", level=1)
+        app_meta = doc.add_paragraph(
+            f"Generated by {CLAUDE_MODEL} · {datetime.now().strftime('%Y-%m-%d %H:%M UTC')} · "
+            "Grounded in H.4025 line items + Part IB provisos"
+        )
+        app_meta.runs[0].font.size = Pt(9)
+        app_meta.runs[0].italic = True
+        doc.add_paragraph("")
+
+        # Render the narrative line by line
+        import re as _re
+        for line in insights_narrative.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("## "):
+                h = doc.add_heading(stripped[3:], level=2)
+            elif stripped.startswith("### "):
+                h = doc.add_heading(stripped[4:], level=3)
+            elif stripped.startswith("- ") or stripped.startswith("* "):
+                p = doc.add_paragraph(style="List Bullet")
+                text = stripped[2:]
+                for part in _re.split(r"(\*\*[^*]+\*\*)", text):
+                    if part.startswith("**") and part.endswith("**"):
+                        r = p.add_run(part[2:-2]); r.bold = True; r.font.size = Pt(9.5)
+                    else:
+                        r = p.add_run(part); r.font.size = Pt(9.5)
+            elif stripped.startswith("---"):
+                pass
+            else:
+                p = doc.add_paragraph()
+                for part in _re.split(r"(\*\*[^*]+\*\*)", stripped):
+                    if part.startswith("**") and part.endswith("**"):
+                        r = p.add_run(part[2:-2]); r.bold = True; r.font.size = Pt(10)
+                    else:
+                        r = p.add_run(part); r.font.size = Pt(10)
+                p.paragraph_format.space_after = Pt(3)
+
+        doc.add_paragraph("")
+        disc = doc.add_paragraph(
+            "DATA NOTE: Dollar figures in this appendix are verbatim from H.4025 (Part IA). "
+            "Peer benchmarks, efficiency estimates, and policy analysis are generated by Claude "
+            "and are not SC budget figures. Verify all recommendations against official appropriations "
+            "act and agency records before acting."
+        )
+        disc.runs[0].italic = True
+        disc.runs[0].font.size = Pt(8)
 
     # Write to buffer
     buf = io.BytesIO()
