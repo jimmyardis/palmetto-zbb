@@ -637,8 +637,8 @@ def ask(req: AskRequest):
 
     try:
         response = claude.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=4096,
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
             system=ANTI_HALLUCINATION_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
