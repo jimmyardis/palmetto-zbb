@@ -39,6 +39,8 @@ Build the mission statements feature: extract all 115 agency mission statements 
 
 ### 2026-06-12
 
+- Second bug found when Jimmy smoke-tested the button on Clemson: NameError — the narrative insights path checked `get_claude()` but never bound `claude`, so every analysis 502'd. Fixed (commit 8f27bea), tested locally on §111 (200, 17k chars), deployed, and verified live on production (200, ~92s)
+- Note: real analysis time is ~90s, not the 30–60s the UI/guide claim — consider updating copy
 - Ocean/Alex emailed pre-launch questions: (1) where are mission statements, (2) can't find the Claude Analysis button
 - Root-caused the missing button: it was added to `AgencyExplorer.tsx`, a dead component nothing imports — App.tsx renders `AgencyExplorerTab.tsx`. The feature was never visible on the live site despite the backend endpoint being deployed and tested
 - Ported insights button + analysis panel into AgencyExplorerTab.tsx; verified "Analyze with Claude" present in production bundle after deploy (commit 682ef42, Railway deploy SUCCESS)
