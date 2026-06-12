@@ -902,7 +902,8 @@ def agency_insights(section_number: str, structured: bool = False):
             ),
         }
 
-    if not get_claude():
+    claude = get_claude()
+    if not claude:
         raise HTTPException(503, "ANTHROPIC_API_KEY not set.")
 
     # Build prompt — group by subsection
