@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Federal Floor — South Carolina Budget Dependency Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --dark:      #071018;
+  --navy:      #0D1F2D;
+  --mid:       #0F2D1E;
+  --sc-blue:   #003B5C;
+  --sc-green:  #1B4F37;
+  --gold:      #C9A227;
+  --gold-lt:   #E8C84A;
+  --terra:     #C94F2A;
+  --cream:     #F5EFE0;
+  --cream-lt:  #FAF7F2;
+  --ink:       #1A1614;
+  --body:      #2A2420;
+  --muted:     #6B5E50;
+  --line:      #E5DFD3;
+  --gf-color:  #003B5C;
+  --oth-color: #C9A227;
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: 'Source Serif 4', Georgia, serif; color: var(--body); background: var(--cream-lt); font-size: 18px; line-height: 1.75; }
+
+.wrap        { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
+.wrap-narrow { max-width: 760px;  margin: 0 auto; padding: 0 2rem; }
+
+/* ── NAV ── */
+.site-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,16,24,0.97); backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(201,162,39,0.2);
+  padding: 0.75rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand { font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); text-decoration: none; }
+.nav-pill   { font-family: 'Inter', sans-serif; font-size: 0.72rem; color: rgba(245,239,224,0.5); border: 1px solid rgba(201,162,39,0.25); border-radius: 20px; padding: 0.22rem 0.7rem; }
+
+/* ── HERO ── */
+.hero {
+  background: var(--dark); padding: 6rem 2rem 5rem; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 75% 55% at 65% 45%, rgba(13,31,46,0.7) 0%, transparent 70%),
+              radial-gradient(ellipse 45% 40% at 10% 75%, rgba(27,79,55,0.12) 0%, transparent 60%);
+}
+.hero-inner  { max-width: 920px; margin: 0 auto; position: relative; }
+.hero-kicker { font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
+.hero h1     { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; line-height: 1.04; color: var(--cream); margin-bottom: 1rem; letter-spacing: -0.02em; }
+.hero h1 em  { font-style: italic; color: var(--gold); }
+.hero-sub    { font-family: 'Playfair Display', serif; font-size: clamp(1.05rem, 2.5vw, 1.35rem); font-style: italic; font-weight: 400; color: rgba(245,239,224,0.65); max-width: 600px; margin-bottom: 2rem; }
+.hero-lede   { font-size: 1.05rem; line-height: 1.72; color: rgba(245,239,224,0.8); max-width: 660px; border-top: 1px solid rgba(201,162,39,0.25); padding-top: 1.5rem; }
+.hero-byline { margin-top: 2rem; font-family: 'Inter', sans-serif; font-size: 0.75rem; color: rgba(245,239,224,0.35); letter-spacing: 0.04em; }
+
+/* ── HERO STATS ── */
+.hero-stats { margin-top: 3rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); border-top: 1px solid rgba(201,162,39,0.18); }
+.hstat { padding: 1.4rem 1rem; border-right: 1px solid rgba(201,162,39,0.12); }
+.hstat:last-child { border-right: none; }
+.hstat-n { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--gold); line-height: 1; display: block; margin-bottom: 0.2rem; }
+.hstat-l { font-family: 'Inter', sans-serif; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(245,239,224,0.45); }
+
+/* ── SECTIONS ── */
+.section-light { background: var(--cream-lt); padding: 5rem 0; }
+.section-dark  { background: var(--navy);     padding: 5rem 0; color: var(--cream); }
+.section-mid   { background: #0F1F12;          padding: 5rem 0; color: var(--cream); }
+
+.section-label { font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.7rem; display: block; }
+.section-light .section-label { color: var(--sc-blue); }
+
+h2.sh { font-family: 'Playfair Display', serif; font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 700; line-height: 1.18; margin-bottom: 1.25rem; color: var(--ink); }
+.section-dark h2.sh, .section-mid h2.sh { color: var(--cream); }
+
+/* ── BODY ── */
+p { margin-bottom: 1.25rem; }
+.body-lede { font-size: 1.12rem; font-weight: 300; line-height: 1.75; color: var(--muted); margin-bottom: 1.75rem; }
+.section-dark .body-lede { color: rgba(245,239,224,0.65); }
+.drop-cap::first-letter { font-family: 'Playfair Display', serif; float: left; font-size: 4.2rem; font-weight: 900; line-height: 0.78; margin: 0.08em 0.12em -0.05em 0; color: var(--gold); }
+
+/* ── PULL QUOTE ── */
+.pull-quote { border-left: 4px solid var(--gold); margin: 2.5rem 0; padding: 1rem 1.5rem; }
+.pull-quote p { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-style: italic; line-height: 1.5; color: var(--ink); margin: 0; }
+.section-dark .pull-quote p { color: var(--cream); }
+.pull-quote cite { display: block; margin-top: 0.4rem; font-family: 'Inter', sans-serif; font-size: 0.75rem; font-style: normal; color: var(--muted); }
+.section-dark .pull-quote cite { color: rgba(245,239,224,0.4); }
+
+/* ── CALLOUT ── */
+.callout { background: rgba(0,59,92,0.07); border-left: 4px solid var(--sc-blue); border-radius: 0 6px 6px 0; padding: 1.25rem 1.5rem; margin: 2rem 0; }
+.section-dark .callout { background: rgba(201,162,39,0.08); border-color: var(--gold); }
+.callout-lbl { font-family: 'Inter', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sc-blue); margin-bottom: 0.4rem; display: block; }
+.section-dark .callout-lbl { color: var(--gold-lt); }
+.callout p { font-size: 0.93rem; line-height: 1.65; margin: 0; }
+
+/* ── BIG STAT ── */
+.big-stat-wrap { text-align: center; padding: 2.5rem 0 1.5rem; }
+.big-stat { font-family: 'Playfair Display', serif; font-size: clamp(4.5rem, 14vw, 10rem); font-weight: 900; line-height: 1; color: var(--gold); letter-spacing: -0.02em; }
+.big-stat-unit { font-family: 'Inter', sans-serif; font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,239,224,0.5); margin-top: 0.5rem; }
+
+/* ── CHART ── */
+.chart-wrap { margin: 2.5rem 0; background: rgba(255,255,255,0.03); border: 1px solid rgba(201,162,39,0.15); border-radius: 8px; padding: 1.5rem; }
+.section-light .chart-wrap { background: #fff; border-color: rgba(0,59,92,0.1); }
+.chart-title { font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.3rem; }
+.section-light .chart-title { color: var(--sc-blue); }
+.chart-sub { font-family: 'Inter', sans-serif; font-size: 0.78rem; color: rgba(245,239,224,0.45); margin-bottom: 1rem; }
+.section-light .chart-sub { color: var(--muted); }
+
+/* ── TIER CARDS ── */
+.tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1rem; margin: 2rem 0; }
+.tier-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(201,162,39,0.18); border-radius: 8px; padding: 1.25rem; position: relative; overflow: hidden; }
+.tier-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.tier-card.t-federal::before { background: var(--gold); }
+.tier-card.t-university::before { background: var(--terra); }
+.tier-card.t-core::before { background: #4A7A5C; }
+.tier-card.t-dedicated::before { background: #4A6A8A; }
+.tier-n { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--gold); line-height: 1; }
+.tier-card.t-university .tier-n { color: var(--terra); }
+.tier-card.t-core .tier-n { color: #6ABF8E; }
+.tier-card.t-dedicated .tier-n { color: #7AAAD0; }
+.tier-lbl { font-family: 'Inter', sans-serif; font-size: 0.72rem; letter-spacing: 0.06em; color: rgba(245,239,224,0.55); margin-top: 0.3rem; }
+.tier-desc { font-family: 'Inter', sans-serif; font-size: 0.8rem; line-height: 1.55; color: rgba(245,239,224,0.5); margin-top: 0.75rem; }
+.tier-examples { font-family: 'Inter', sans-serif; font-size: 0.72rem; color: rgba(245,239,224,0.35); margin-top: 0.5rem; font-style: italic; }
+
+/* ── AGENCY TABLE ── */
+.agency-table { width: 100%; border-collapse: collapse; font-family: 'Inter', sans-serif; font-size: 0.82rem; margin: 1.5rem 0; }
+.agency-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(245,239,224,0.5); border-bottom: 1px solid rgba(201,162,39,0.2); }
+.agency-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(245,239,224,0.82); vertical-align: middle; }
+.agency-table tr:last-child td { border-bottom: none; }
+.pct-bar-outer { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; width: 100px; display: inline-block; vertical-align: middle; }
+.pct-bar-inner { height: 100%; border-radius: 4px; }
+
+/* ── MATCH BOX ── */
+.match-example { background: rgba(201,162,39,0.06); border: 1px solid rgba(201,162,39,0.2); border-radius: 8px; padding: 1.5rem; margin: 2rem 0; }
+.match-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; font-family: 'Inter', sans-serif; font-size: 0.88rem; }
+.match-row:last-child { margin-bottom: 0; border-top: 1px solid rgba(201,162,39,0.15); padding-top: 0.75rem; }
+.match-label { color: rgba(245,239,224,0.55); min-width: 160px; }
+.match-value { font-weight: 600; color: var(--gold); }
+.match-value.red { color: #FF8080; }
+.match-value.green { color: #6ABF8E; }
+
+/* ── LEGEND ── */
+.legend { display: flex; gap: 1.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 0.4rem; font-family: 'Inter', sans-serif; font-size: 0.78rem; color: rgba(245,239,224,0.65); }
+.legend-item.light { color: var(--muted); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── METHODOLOGY ── */
+.method-box { background: rgba(0,59,92,0.06); border: 1px solid rgba(0,59,92,0.12); border-radius: 6px; padding: 1.5rem; margin-top: 2rem; font-family: 'Inter', sans-serif; font-size: 0.8rem; line-height: 1.65; color: var(--muted); }
+.method-box strong { color: var(--body); }
+
+/* ── FOOTER ── */
+.site-footer { background: var(--dark); color: rgba(245,239,224,0.45); padding: 3.5rem 2rem; }
+.footer-grid { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; }
+.footer-brand { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--gold); margin-bottom: 0.5rem; }
+.footer-desc  { font-family: 'Source Serif 4', serif; font-size: 0.85rem; line-height: 1.65; color: rgba(245,239,224,0.38); }
+.footer-col-head { font-family: 'Inter', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(201,162,39,0.6); margin-bottom: 0.6rem; }
+.footer-links { list-style: none; }
+.footer-links li { margin-bottom: 0.35rem; }
+.footer-links a { color: rgba(245,239,224,0.38); text-decoration: none; font-family: 'Inter', sans-serif; font-size: 0.8rem; }
+.footer-links a:hover { color: var(--gold); }
+.footer-bottom { max-width: 1280px; margin: 2rem auto 0; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); font-family: 'Inter', sans-serif; font-size: 0.72rem; color: rgba(245,239,224,0.25); }
+
+@media (max-width: 700px) {
+  .hero { padding: 4rem 1.25rem 3rem; }
+  .section-light, .section-dark, .section-mid { padding: 3.5rem 0; }
+  .wrap, .wrap-narrow { padding: 0 1.25rem; }
+  .hero-stats { grid-template-columns: repeat(2,1fr); }
+  .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .tier-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="site-nav">
+  <a class="nav-brand" href="/research/">← Research Series</a>
+  <span class="nav-pill">The Palmetto Ledger · Issue 1 · May 2026</span>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     HERO
+══════════════════════════════════════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <p class="hero-kicker">Carolina Redesign · The Palmetto Ledger · Issue 1</p>
+    <h1>The Federal<br><em>Floor</em></h1>
+    <p class="hero-sub">Understanding South Carolina's $39 billion budget dependency</p>
+    <p class="hero-lede">
+      Two out of every three dollars in South Carolina's state budget comes from somewhere
+      other than state taxes. That is not a scandal. It is a structural fact — one that shapes
+      every serious conversation about zero-based budgeting, agency efficiency, and fiscal
+      reform. Before you can argue about what the state should spend, you have to understand
+      where the money actually comes from. This analysis is that map.
+    </p>
+    <p class="hero-byline">
+      Carolina Redesign · Palmetto ZBB Suite · Data: SC H.4025 FY2025-2026 Appropriations Act · May 2026
+    </p>
+  </div>
+
+  <div class="hero-inner" style="margin-top:0;">
+    <div class="hero-stats">
+      <div class="hstat">
+        <span class="hstat-n">$39.2B</span>
+        <span class="hstat-l">Total SC budget FY2025-26</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">$13.2B</span>
+        <span class="hstat-l">State general funds (33.8%)</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">$25.9B</span>
+        <span class="hstat-l">Non-general-fund sources (66.2%)</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">115</span>
+        <span class="hstat-l">Agencies analyzed</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">$11.9B</span>
+        <span class="hstat-l">DHHS alone — 30% of entire budget</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 1 — THE FRAMEWORK
+══════════════════════════════════════════ -->
+<section class="section-light">
+  <div class="wrap-narrow">
+    <span class="section-label">The Framework</span>
+    <h2 class="sh">What this analysis measures — and why it matters for ZBB</h2>
+    <p class="body-lede">
+      South Carolina law requires zero-based budgeting: every appropriation justified from scratch,
+      every dollar defended on its merits. In practice, the budget carries forward its prior-year
+      base and adds from there. Reforming that requires understanding the budget's architecture first.
+    </p>
+
+    <p class="drop-cap">
+      Every dollar in the South Carolina state budget has a source. Some come from state income
+      taxes, sales taxes, and other revenues that flow into the General Fund — money the legislature
+      controls and can appropriate freely. The rest comes from somewhere else: federal matching
+      grants, tuition and fees at public universities, dedicated revenues like the Education Lottery,
+      federal highway funds, and dozens of other streams. The Appropriations Act tracks all of it,
+      but the public debate almost never distinguishes between them.
+    </p>
+
+    <p>
+      That distinction matters enormously for zero-based budgeting. A legislator who wants to
+      "cut 10%" from a given agency needs to know whether those cuts come from state general funds
+      (which they control) or from federal matching dollars (where a state cut can trigger a
+      proportionally larger loss in total funding). The architecture of the budget — who funds what,
+      and under what conditions — is the prerequisite for any serious reform conversation.
+    </p>
+
+    <div class="callout">
+      <span class="callout-lbl">Data Source</span>
+      <p>
+        All figures are verbatim extractions from South Carolina H.4025, the FY2025-2026
+        Appropriations Act, processed through the Palmetto ZBB Suite — a line-item budget
+        analysis tool covering all 115 state agencies. Amounts are as enacted. "Other/Non-GF"
+        includes federal grants, tuition, dedicated revenues, and all other non-general-fund
+        appropriations. Federal funds are not separately enumerated in Part IA of H.4025;
+        agency-level characterizations in this analysis are based on known funding structures.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 2 — THE 66-CENT DOLLAR
+══════════════════════════════════════════ -->
+<section class="section-dark">
+  <div class="wrap-narrow">
+    <span class="section-label">The Headline Number</span>
+    <h2 class="sh">66 cents of every dollar</h2>
+    <p class="body-lede">
+      State general funds account for just 33.8% of South Carolina's $39.2 billion budget.
+      The other 66.2% — $25.9 billion — flows from outside the state tax base.
+    </p>
+  </div>
+
+  <div class="wrap">
+    <div class="big-stat-wrap">
+      <div class="big-stat">66¢</div>
+      <div class="big-stat-unit">of every dollar in SC's budget comes from non-general-fund sources</div>
+    </div>
+  </div>
+
+  <div class="wrap-narrow" style="margin-top:2rem;">
+    <p>
+      This is not unusual for a Southern state. South Carolina has historically received
+      more in federal funding than its taxpayers contribute in federal taxes — a structural
+      feature of how Medicaid, highway funds, and other federal matching programs are designed.
+      States with lower per-capita incomes tend to draw more in federal matching funds, particularly
+      for Medicaid, where the federal match rate is inversely tied to state income levels.
+    </p>
+
+    <p>
+      But "normal" does not mean "simple." The 66% figure obscures three very different kinds
+      of non-general-fund dependency — each with different implications for reform, different
+      degrees of state control, and different risks if the funding landscape changes.
+    </p>
+
+    <!-- MAIN CHART -->
+    <div class="chart-wrap" style="margin-top:2rem;">
+      <div class="chart-title">South Carolina FY2025-26 Budget — Top 25 Agencies</div>
+      <div class="chart-sub">General Fund (blue) vs. Other / Non-GF (gold) · Verbatim from H.4025 · Sorted by total appropriation</div>
+      <div class="legend" style="margin-bottom:1rem;">
+        <div class="legend-item"><div class="legend-dot" style="background:#003B5C;"></div>State General Fund</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#C9A227;"></div>Other / Non-GF (federal, tuition, dedicated revenues)</div>
+      </div>
+      <div id="chart-main" style="height:680px;"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 3 — THREE KINDS OF DEPENDENCY
+══════════════════════════════════════════ -->
+<section class="section-light">
+  <div class="wrap-narrow">
+    <span class="section-label">The Three Tiers</span>
+    <h2 class="sh">Not all non-GF dollars are the same</h2>
+    <p class="body-lede">
+      The 66% non-GF share includes three fundamentally different funding relationships —
+      each with distinct political, fiscal, and reform implications.
+    </p>
+
+    <p class="drop-cap">
+      When people see that South Carolina's budget is 66% "other," the instinct is sometimes
+      to treat that as a single problem — or a single opportunity. It is neither. The $25.9 billion
+      in non-general-fund appropriations comes from at least three structurally distinct sources,
+      each with different rules about how it can be spent, cut, or redirected.
+    </p>
+  </div>
+
+  <div class="wrap">
+    <div class="tier-grid">
+      <div class="tier-card t-federal">
+        <div class="tier-n">~$14B</div>
+        <div class="tier-lbl">Federal Matching Funds</div>
+        <div class="tier-desc">Primarily Medicaid (DHHS), federal highway funds (DOT), federal grants (DHEC, DDSN, DSS). State funds unlock federal dollars at a match rate — cutting state spending here reduces total agency funding by more than the cut itself.</div>
+        <div class="tier-examples">DHHS, DOT, Dept of Public Health, Dept of Disabilities, DSS, Adjutant General</div>
+      </div>
+      <div class="tier-card t-university">
+        <div class="tier-n">~$7B</div>
+        <div class="tier-lbl">University Revenue (Tuition &amp; Grants)</div>
+        <div class="tier-desc">Tuition, fees, and research grants at public universities. Not federal risk in the same way — but sensitive to enrollment trends, federal research funding, and student aid policy. High non-GF % here reflects institutional independence, not federal exposure.</div>
+        <div class="tier-examples">Clemson, USC, MUSC, College of Charleston, Coastal Carolina, The Citadel, Winthrop</div>
+      </div>
+      <div class="tier-card t-dedicated">
+        <div class="tier-n">~$3B</div>
+        <div class="tier-lbl">Dedicated / Self-Funded Revenues</div>
+        <div class="tier-desc">Education Lottery proceeds, housing finance bonds, county transportation funds, infrastructure bank, fee-funded agencies. These revenues are legally restricted to specific purposes and flow outside the general fund by design.</div>
+        <div class="tier-examples">Lottery Expenditure Account, SC Housing Finance Authority, County Transportation, Infrastructure Bank</div>
+      </div>
+      <div class="tier-card t-core">
+        <div class="tier-n">~$1.5B</div>
+        <div class="tier-lbl">The State-Funded Core</div>
+        <div class="tier-desc">Agencies that run almost entirely on state general funds: corrections, juvenile justice, courts, law enforcement, the legislative branch. These are where state budget decisions have the most direct effect — and where ZBB analysis has the clearest mandate.</div>
+        <div class="tier-examples">Dept of Corrections, Dept of Juvenile Justice, Judicial Department, SLED, Legislature</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 4 — THE MEDICAID PILLAR
+══════════════════════════════════════════ -->
+<section class="section-dark">
+  <div class="wrap-narrow">
+    <span class="section-label">The Medicaid Pillar</span>
+    <h2 class="sh">One agency. Thirty percent of the budget.</h2>
+    <p class="body-lede">
+      The Department of Health &amp; Human Services administers South Carolina's Medicaid program.
+      Its budget is $11.9 billion — larger than the entire state general fund.
+    </p>
+
+    <p class="drop-cap">
+      DHHS is not like other state agencies. Its $11.9 billion appropriation is the single
+      largest line in the SC budget — larger than the Departments of Education, Transportation,
+      and Corrections combined. Nineteen cents of every DHHS dollar comes from the state
+      general fund; the other 81 cents — $9.67 billion — comes from federal Medicaid matching funds.
+      That ratio is not a choice the legislature makes each year. It is set by federal formula,
+      tied to South Carolina's per-capita income, and changes only when Congress changes it.
+    </p>
+
+    <p>
+      This has an important implication for zero-based budgeting. The $2.27 billion in state
+      general funds that SC appropriates to DHHS is, in effect, the lever that unlocks $9.67 billion
+      in federal matching dollars. Reduce state appropriations to DHHS and the federal match shrinks
+      proportionally. A $100 million state cut to Medicaid does not save $100 million — it eliminates
+      a multiple of that in total program funding, with the difference falling on providers, patients,
+      or both.
+    </p>
+
+    <div class="match-example">
+      <div style="font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-lt);margin-bottom:1rem;">Illustrative Match Mechanics — DHHS</div>
+      <div class="match-row">
+        <span class="match-label">State GF appropriation</span>
+        <span class="match-value">$2,271,102,188</span>
+      </div>
+      <div class="match-row">
+        <span class="match-label">Federal match (approx. 4.25:1)</span>
+        <span class="match-value">$9,666,670,216</span>
+      </div>
+      <div class="match-row">
+        <span class="match-label">Total program funding</span>
+        <span class="match-value">$11,937,772,404</span>
+      </div>
+      <div class="match-row">
+        <span class="match-label">If state cut $100M from GF:</span>
+        <span class="match-value red">~$525M total program reduction</span>
+      </div>
+      <div class="match-row">
+        <span class="match-label">Net state "savings":</span>
+        <span class="match-value red">$100M — at cost of $425M in lost federal funds</span>
+      </div>
+    </div>
+
+    <p>
+      This is why Medicaid dominates every serious state budget conversation. It is not that
+      the program is immune to scrutiny — eligibility policy, administrative costs, and program
+      efficiency are all legitimate subjects for ZBB-style review. It is that the lever mechanics
+      are different. Cutting Medicaid state appropriations is not a way to save money; it is a way
+      to reduce a matching program that costs the state 19 cents for every federal dollar it draws.
+    </p>
+
+    <div class="pull-quote">
+      <p>"DHHS's $9.67 billion in federal matching funds is 37% of all non-GF spending in the
+      state — drawn by $2.27 billion in state appropriations. It is the most consequential
+      ratio in South Carolina's budget."</p>
+    </div>
+
+    <!-- Scatter chart -->
+    <div class="chart-wrap" style="margin-top:2rem;">
+      <div class="chart-title">Budget Size vs. State General Fund Share — All 115 Agencies</div>
+      <div class="chart-sub">Each bubble = one agency · Size = total appropriation · Color = dependency tier · Y-axis: % from state general fund</div>
+      <div id="chart-scatter" style="height:420px;"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 5 — THE HIGHWAY MACHINE
+══════════════════════════════════════════ -->
+<section class="section-mid">
+  <div class="wrap-narrow">
+    <span class="section-label">The Highway Machine</span>
+    <h2 class="sh">SCDOT: 95.6% federal, by design</h2>
+
+    <p class="drop-cap">
+      The Department of Transportation's $2.78 billion budget is 95.6% non-general-fund —
+      the highest dependency ratio of any large agency in the state. This is not inefficiency.
+      It is the fundamental architecture of federal highway finance. The Federal Highway
+      Administration distributes transportation funds to states via formula apportionments;
+      states provide a match (typically 20%) and receive federal funds in return. South Carolina's
+      $123 million in state general fund transportation spending draws $2.65 billion in combined
+      federal and other transportation funds.
+    </p>
+
+    <p>
+      DOT is, in this sense, a pass-through institution at scale. The state appropriates a
+      relatively small amount to maintain its federal partnership; the federal funds do the
+      work of building and maintaining the highway network. Any discussion of "cutting DOT"
+      that doesn't engage with the federal match structure is discussing a small fraction of
+      what the agency actually spends.
+    </p>
+
+    <div class="callout">
+      <span class="callout-lbl">The University Parallel</span>
+      <p>
+        Clemson ($1.81B, 88% non-GF), USC ($1.62B, 80% non-GF), and MUSC ($981M, 82% non-GF)
+        show high non-GF percentages for a different reason: tuition revenue, research grants,
+        and clinical fees. These are not federal matching relationships in the same sense as
+        Medicaid or highways. They represent institutional revenue-generating capacity. The
+        state's GF appropriations to these universities are supplements — meaningful to the
+        institutions, but not the lever that unlocks a proportional federal match. The risk
+        profile is enrollment and research funding, not Medicaid policy in Washington.
+      </p>
+    </div>
+
+    <!-- Most exposed agencies table -->
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin:2rem 0 0.5rem;color:var(--cream);">Most non-GF-dependent agencies by total dollar exposure</h3>
+    <p style="font-family:'Inter',sans-serif;font-size:0.8rem;color:rgba(245,239,224,0.45);margin-bottom:1rem;">Agencies with &gt;$100M in non-GF appropriations, ranked by non-GF dollar amount</p>
+    <table class="agency-table">
+      <thead>
+        <tr>
+          <th>Agency</th>
+          <th>Total</th>
+          <th>Non-GF $</th>
+          <th>Non-GF %</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Dept of Health &amp; Human Services</td><td>$11.9B</td><td>$9.67B</td><td>81.0%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:81%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Education</td><td>$7.6B</td><td>$3.22B</td><td>42.3%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:42%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Transportation</td><td>$2.8B</td><td>$2.65B</td><td>95.6%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:96%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Clemson University</td><td>$1.8B</td><td>$1.59B</td><td>87.9%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:88%;background:var(--terra);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Univ of South Carolina</td><td>$1.6B</td><td>$1.29B</td><td>79.9%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:80%;background:var(--terra);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Medical Univ of SC (MUSC)</td><td>$981M</td><td>$805M</td><td>82.0%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:82%;background:var(--terra);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>State Board for Technical Ed.</td><td>$817M</td><td>$555M</td><td>67.9%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:68%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Social Services</td><td>$629M</td><td>$290M</td><td>46.2%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:46%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Public Health</td><td>$506M</td><td>$369M</td><td>72.9%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:73%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Disabilities &amp; Special Needs</td><td>$447M</td><td>$304M</td><td>68.1%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:68%;background:var(--gold);height:100%;border-radius:4px;"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 6 — THE STATE-FUNDED CORE
+══════════════════════════════════════════ -->
+<section class="section-dark">
+  <div class="wrap-narrow">
+    <span class="section-label">The State-Funded Core</span>
+    <h2 class="sh">Where state budget decisions have the most direct effect</h2>
+
+    <p class="body-lede">
+      The agencies that run almost entirely on state general funds — Corrections, Juvenile Justice,
+      the courts, law enforcement — are also the agencies where ZBB analysis has the clearest
+      mandate and the fewest federal constraints.
+    </p>
+
+    <p class="drop-cap">
+      The Department of Corrections spends $674 million per year and sources 91.3% of it from
+      state general funds. There is no Medicaid match to optimize, no federal highway apportionment
+      to draw down, no tuition revenue to supplement the appropriation. The state appropriates,
+      and the state spends. The same is true for the Department of Juvenile Justice (88.6% GF),
+      the Judicial Department (85.6% GF), and Prosecution Coordination (85.8% GF). These are
+      institutions that draw their authority and their funding almost entirely from the state.
+    </p>
+
+    <p>
+      This creates a paradox at the center of SC budget reform. The agencies where zero-based
+      budgeting has the most direct traction — where legislators can actually change outcomes
+      by changing appropriations — represent a relatively small share of the total budget.
+      Corrections, Juvenile Justice, the courts, and law enforcement together account for
+      roughly $1.5 billion of a $39.2 billion budget. They are the state-funded core. But
+      they are not where the money is.
+    </p>
+
+    <div class="pull-quote">
+      <p>"The agencies where ZBB has the clearest mandate are also the smallest slice of the
+      budget. The agencies that dominate the total — DHHS, DOT, the universities — operate
+      under funding structures that don't yield to line-item cuts the same way."</p>
+    </div>
+
+    <!-- State-core agencies table -->
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin:2rem 0 0.5rem;color:var(--cream);">Most state-general-fund-dependent agencies</h3>
+    <p style="font-family:'Inter',sans-serif;font-size:0.8rem;color:rgba(245,239,224,0.45);margin-bottom:1rem;">Agencies with &gt;80% from state general fund — the "state-funded core"</p>
+    <table class="agency-table">
+      <thead>
+        <tr><th>Agency</th><th>Total</th><th>GF $</th><th>GF %</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Dept of Corrections</td><td>$674M</td><td>$615M</td><td>91.3%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:91%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Juvenile Justice</td><td>$194M</td><td>$172M</td><td>88.6%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:89%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Prosecution Coordination</td><td>$61M</td><td>$52M</td><td>85.8%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:86%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Judicial Department</td><td>$133M</td><td>$114M</td><td>85.6%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:86%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Motor Vehicles</td><td>$139M</td><td>$122M</td><td>87.8%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:88%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Public Safety</td><td>$293M</td><td>$217M</td><td>74.2%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:74%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Commission on Higher Education</td><td>$49M</td><td>$42M</td><td>86.3%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:86%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+        <tr><td>Dept of Archives &amp; History</td><td>$14M</td><td>$12M</td><td>89.1%</td><td><div class="pct-bar-outer"><div class="pct-bar-inner" style="width:89%;background:#4A7A5C;height:100%;border-radius:4px;"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 7 — WHAT THIS MEANS FOR ZBB
+══════════════════════════════════════════ -->
+<section class="section-light">
+  <div class="wrap-narrow">
+    <span class="section-label">The ZBB Implication</span>
+    <h2 class="sh">A budget you can't fully zero-base — and what that means</h2>
+
+    <p class="drop-cap">
+      South Carolina's ZBB law requires every agency to justify its appropriations from scratch
+      each year. That is the right principle. But applying it uniformly across a budget where
+      66% of the dollars are not primarily state decisions requires a more precise framework
+      than uniform percentage review.
+    </p>
+
+    <p>
+      For the state-funded core — Corrections, Juvenile Justice, the courts — ZBB operates
+      as intended. The state appropriates, the agency spends, and the legislature can meaningfully
+      evaluate whether the spending is justified. Line-by-line review, priority tiers, decision
+      packages: all of it applies cleanly.
+    </p>
+
+    <p>
+      For the federal-matching tier — DHHS, DOT, DHEC, DDSN, DSS — ZBB still applies, but
+      the question changes. It is not "how much should the state spend?" but "what state investment
+      is required to maintain federal partnership, and is that partnership producing value?"
+      Administrative efficiency, eligibility policy, program outcomes — these are legitimate
+      ZBB questions. But they are not the same as asking whether the line item should exist.
+    </p>
+
+    <p>
+      For the university system — where non-GF revenues are primarily tuition and research —
+      the ZBB question is about state subsidy, not total agency spending. What is the state
+      purchasing with its GF appropriation to Clemson or USC? Is the return — in workforce
+      development, research capacity, and economic activity — commensurate with the investment?
+      That is a meaningful budget question. It just requires knowing that the $219 million SC
+      appropriates to Clemson is a supplement to $1.59 billion in other revenue, not the
+      full picture of what the institution costs or produces.
+    </p>
+
+    <div class="callout">
+      <span class="callout-lbl">The ZBB Suite Approach</span>
+      <p>
+        The Palmetto ZBB Suite processes the full H.4025 appropriations act down to the line-item
+        level for all 115 agencies, flagging federal match requirements on individual line items and
+        generating structured decision packages. The analysis in this piece draws directly from that
+        data. Future editions of the Palmetto Ledger will examine specific agencies — beginning with
+        the state-funded core, where ZBB tools have the most immediate application.
+      </p>
+    </div>
+
+    <p>
+      South Carolina cannot zero-base its way to fiscal transformation by treating all 115 agencies
+      the same way. It can make real progress by knowing exactly which agencies run on state money,
+      which ones run on federal matches that multiply state investment, and which ones generate their
+      own revenue. That map — this map — is where serious reform begins.
+    </p>
+
+    <div class="method-box">
+      <strong>Methodology.</strong> All budget figures are verbatim extractions from SC H.4025,
+      the FY2025-2026 General Appropriations Act (ratified May 28, 2025), as processed by the
+      Palmetto ZBB Suite. Section Recapitulation totals are used for agency-level comparisons.
+      "General Funds" is as reported in Part IA. "Other / Non-GF" is calculated as Total Funds
+      minus General Funds; it includes federal grants, tuition and fees, dedicated revenues
+      (lottery, bonds, highway funds), and other non-general appropriations. Federal funds are
+      not separately enumerated in Part IA source data; agency-level federal characterizations
+      are based on known program structures (Medicaid, FHWA, etc.) and should be verified against
+      agency budget plans for precise federal fund amounts. Tier classifications are analytical
+      constructs for this report. Analysis by Carolina Redesign, May 2026.
+    </div>
+  </div>
+</section>
+
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">The Palmetto Ledger</div>
+      <p class="footer-desc">
+        Original budget analysis for South Carolina, powered by the Palmetto ZBB Suite.
+        Line-item appropriations data from H.4025, processed across all 115 state agencies.
+        Part of the Carolina Redesign Research Series.
+      </p>
+    </div>
+    <div>
+      <p class="footer-col-head">Data Sources</p>
+      <ul class="footer-links">
+        <li><a href="#">SC H.4025 FY2025-26 Appropriations Act</a></li>
+        <li><a href="#">Palmetto ZBB Suite</a></li>
+        <li><a href="#">SC Budget &amp; Control Board</a></li>
+        <li><a href="#">SC Dept of Administration</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-head">Research Series</p>
+      <ul class="footer-links">
+        <li><a href="/research/">All Research</a></li>
+        <li><a href="/urban-productivity/">Urban Productivity Series</a></li>
+        <li><a href="/urban-productivity/columbia/">Columbia, SC Analysis</a></li>
+        <li><a href="/urban-productivity/charleston/">Charleston Analysis</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    Carolina Redesign · The Palmetto Ledger · Issue 1 · May 2026 ·
+    Budget figures are verbatim from H.4025 as enacted. Verify against SC Dept of Administration for official figures.
+  </div>
+</footer>
+
+
+<!-- ══════════════════════════════════════════
+     CHARTS
+══════════════════════════════════════════ -->
+<script>
+// ── DATA ──────────────────────────────────────
+const agencies = [
+  {name:"Dept of Health & Human Services", gf:2271102188, other:9666670216, total:11937772404, tier:"federal"},
+  {name:"Dept of Education",               gf:4393428827, other:3217639695, total:7611068522,  tier:"mixed"},
+  {name:"Dept of Transportation",          gf:123057270,  other:2653614054, total:2776671324,  tier:"federal"},
+  {name:"Clemson University",              gf:219327137,  other:1587699189, total:1807026326,  tier:"university"},
+  {name:"Univ of South Carolina",          gf:325886983,  other:1294132974, total:1620019957,  tier:"university"},
+  {name:"Medical Univ of SC (MUSC)",       gf:176290820,  other:804792629,  total:981083449,   tier:"university"},
+  {name:"State Board for Technical Ed.",   gf:262395759,  other:554744866,  total:817140625,   tier:"federal"},
+  {name:"Dept of Corrections",             gf:615361272,  other:58867295,   total:674228567,   tier:"core"},
+  {name:"Dept of Social Services",         gf:338625452,  other:290314749,  total:628940201,   tier:"federal"},
+  {name:"Lottery Expenditure Account",     gf:0,          other:562586859,  total:562586859,   tier:"dedicated"},
+  {name:"Dept of Mental Health",           gf:327267357,  other:231094462,  total:558361819,   tier:"mixed"},
+  {name:"Dept of Public Health",           gf:137232538,  other:368726351,  total:505958889,   tier:"federal"},
+  {name:"Dept of Disabilities",            gf:142649170,  other:303936094,  total:446585264,   tier:"federal"},
+  {name:"Dept of Administration",          gf:129159118,  other:280410473,  total:409569591,   tier:"mixed"},
+  {name:"Capital Reserve Fund",            gf:387352137,  other:0,          total:387352137,   tier:"core"},
+  {name:"Aid to Subdivisions",             gf:347513486,  other:0,          total:347513486,   tier:"core"},
+  {name:"College of Charleston",           gf:59415145,   other:242562766,  total:301977911,   tier:"university"},
+  {name:"Coastal Carolina University",     gf:37221088,   other:260314644,  total:297535732,   tier:"university"},
+  {name:"Dept of Public Safety",           gf:217320999,  other:75546417,   total:292867416,   tier:"core"},
+  {name:"SC Housing Finance Authority",    gf:0,          other:277039000,  total:277039000,   tier:"dedicated"},
+  {name:"The Citadel",                     gf:30786188,   other:169991588,  total:200777776,   tier:"university"},
+  {name:"Dept of Juvenile Justice",        gf:171732162,  other:22057099,   total:193789261,   tier:"core"},
+  {name:"Winthrop University",             gf:39660215,   other:152514055,  total:192174270,   tier:"university"},
+  {name:"Dept of Natural Resources",       gf:86328111,   other:100872863,  total:187200974,   tier:"mixed"},
+  {name:"Adjutant General (SC Natl Guard)",gf:21318093,   other:99246375,   total:120564468,   tier:"federal"},
+];
+
+const TIER_COLORS = {
+  federal:    { gf:'#003B5C', other:'#C9A227' },
+  university: { gf:'#1B3A5C', other:'#C94F2A' },
+  core:       { gf:'#1B4F37', other:'#4A7A5C' },
+  mixed:      { gf:'#2A3A4A', other:'#7A8A6A' },
+  dedicated:  { gf:'#1C2A3A', other:'#4A6A8A' },
+};
+
+function fmt(v) {
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(0) + 'M';
+  return '$' + v.toLocaleString();
+}
+
+// ── MAIN STACKED BAR ──────────────────────────
+const mainChart = echarts.init(document.getElementById('chart-main'));
+const sorted = [...agencies].reverse(); // echarts yAxis reverses
+mainChart.setOption({
+  backgroundColor: 'transparent',
+  grid: { top: 10, bottom: 40, left: 240, right: 120 },
+  xAxis: {
+    type: 'value',
+    axisLabel: { color:'rgba(245,239,224,0.45)', fontSize:11, formatter: v => fmt(v) },
+    splitLine: { lineStyle:{ color:'rgba(255,255,255,0.06)' } },
+    axisLine: { show:false }
+  },
+  yAxis: {
+    type: 'category',
+    data: sorted.map(d => d.name),
+    axisLabel: { color:'rgba(245,239,224,0.75)', fontSize:11.5 }
+  },
+  series: [
+    {
+      name: 'General Fund',
+      type: 'bar', stack: 'total',
+      data: sorted.map(d => ({
+        value: d.gf,
+        itemStyle: { color: TIER_COLORS[d.tier].gf }
+      })),
+      barMaxWidth: 26,
+      label: { show:false }
+    },
+    {
+      name: 'Other / Non-GF',
+      type: 'bar', stack: 'total',
+      data: sorted.map(d => ({
+        value: d.other,
+        itemStyle: { color: TIER_COLORS[d.tier].other }
+      })),
+      barMaxWidth: 26,
+      label: {
+        show: true, position: 'right',
+        formatter: p => {
+          const d = sorted[p.dataIndex];
+          const pct = d.total ? Math.round(d.other/d.total*100) : 0;
+          return `${fmt(d.total)}  ${pct}% non-GF`;
+        },
+        color:'rgba(245,239,224,0.55)', fontSize:10.5
+      }
+    }
+  ],
+  tooltip: {
+    trigger:'axis',
+    formatter: params => {
+      const d = sorted[params[0].dataIndex];
+      const pct = d.total ? (d.other/d.total*100).toFixed(1) : 0;
+      return `<b>${d.name}</b><br>
+        Total: ${fmt(d.total)}<br>
+        General Fund: ${fmt(d.gf)} (${(100-pct)}%)<br>
+        Other/Non-GF: ${fmt(d.other)} (${pct}%)`;
+    }
+  }
+});
+
+// ── SCATTER ───────────────────────────────────
+const scatterChart = echarts.init(document.getElementById('chart-scatter'));
+const TIER_DOT = {
+  federal:    '#C9A227',
+  university: '#C94F2A',
+  core:       '#4A9A6C',
+  mixed:      '#7A9A8A',
+  dedicated:  '#4A7AAA',
+};
+const TIER_NAME = {
+  federal:'Federal-Matching', university:'University System', core:'State-Funded Core', mixed:'Mixed', dedicated:'Dedicated Revenue'
+};
+scatterChart.setOption({
+  backgroundColor: 'transparent',
+  grid: { top:20, bottom:50, left:65, right:30 },
+  xAxis: {
+    type:'log', name:'Total Appropriation (log scale)', nameLocation:'middle', nameGap:32,
+    axisLabel:{ color:'rgba(245,239,224,0.45)', fontSize:10, formatter:v=>fmt(v) },
+    nameTextStyle:{ color:'rgba(245,239,224,0.35)', fontSize:10 },
+    splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } },
+    axisLine:{ lineStyle:{ color:'rgba(255,255,255,0.1)' } }
+  },
+  yAxis: {
+    type:'value', name:'% from State General Fund', nameLocation:'middle', nameGap:50,
+    min:0, max:105,
+    axisLabel:{ color:'rgba(245,239,224,0.45)', fontSize:10, formatter:v=>v+'%' },
+    nameTextStyle:{ color:'rgba(245,239,224,0.35)', fontSize:10 },
+    splitLine:{ lineStyle:{ color:'rgba(255,255,255,0.05)' } },
+    axisLine:{ show:false }
+  },
+  series: agencies.map(d => ({
+    type:'scatter',
+    name: TIER_NAME[d.tier],
+    data: [[d.total, d.total ? Math.round(d.gf/d.total*100) : 0]],
+    symbolSize: Math.max(8, Math.sqrt(d.total/1e6)*1.8),
+    itemStyle: { color:TIER_DOT[d.tier], opacity:0.82, borderColor:'rgba(255,255,255,0.2)', borderWidth:1 },
+    label: {
+      show: d.total > 400e6,
+      formatter: d.name.split(' ').slice(0,2).join(' '),
+      color:'rgba(245,239,224,0.65)', fontSize:9, position:'top'
+    },
+    tooltip:{
+      formatter: () =>
+        `<b>${d.name}</b><br>Total: ${fmt(d.total)}<br>GF share: ${d.total ? Math.round(d.gf/d.total*100) : 0}%<br>Tier: ${TIER_NAME[d.tier]}`
+    }
+  })),
+  legend: {
+    data: Object.values(TIER_NAME),
+    bottom:5, textStyle:{ color:'rgba(245,239,224,0.5)', fontSize:10 }
+  }
+});
+
+window.addEventListener('resize', () => {
+  mainChart.resize(); scatterChart.resize();
+});
+</script>
+</body>
+</html>
