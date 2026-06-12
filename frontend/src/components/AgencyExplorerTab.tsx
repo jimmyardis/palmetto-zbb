@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
+import { marked } from 'marked'
 import { api } from '../api'
-import type { AgencySummary, AgencyDetail, LineItem } from '../types'
+import type { AgencySummary, AgencyDetail, LineItem, InsightsResponse } from '../types'
 import { useAgencyStatus, type AgencyStatus } from '../hooks/useAgencyStatus'
 
 interface Props {
@@ -39,6 +40,9 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
   const [activeVizTab, setActiveVizTab] = useState<'bar' | 'sensitivity'>('bar')
   const [flaggedRows, setFlaggedRows] = useState<Set<number>>(new Set())
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [insights, setInsights] = useState<InsightsResponse | null>(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsError, setInsightsError] = useState('')
   const prevSection = useRef<string | null>(null)
 
   const { status, setStatus, getEmoji } = useAgencyStatus()
@@ -55,11 +59,22 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
     if (!selectedSection) return
     setLoading(true)
     setDetail(null)
+    setInsights(null)
+    setInsightsError('')
     api.agency(selectedSection)
       .then(setDetail)
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [selectedSection])
+
+  function runInsights() {
+    if (!selectedSection || insightsLoading) return
+    setInsightsLoading(true)
+    setInsightsError('')
+    api.insights(selectedSection)
+      .then(r => { setInsights(r); setInsightsLoading(false) })
+      .catch(e => { setInsightsError(e.message); setInsightsLoading(false) })
+  }
 
   const filtered = agencies.filter(a =>
     !search || a.agency_name.toLowerCase().includes(search.toLowerCase()) || a.section_number.includes(search)
@@ -206,6 +221,14 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
                       <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                     ))}
                   </select>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={runInsights}
+                    disabled={insightsLoading}
+                    title="Run a full ZBB analyst report using Claude — takes 30–60 seconds"
+                  >
+                    {insightsLoading ? '⏳ Analyzing…' : '✦ Analyze with Claude'}
+                  </button>
                   <button className="btn btn-primary btn-sm" onClick={() => onOpenInSandbox(detail.section_number)}>
                     Open in Sandbox
                   </button>
@@ -256,6 +279,40 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
                 <div className="alert alert-info" style={{ marginTop: 12, fontSize: 12 }}>{detail.data_note}</div>
               )}
             </div>
+
+            {/* Claude ZBB Analysis */}
+            {(insightsLoading || insightsError || insights) && (
+              <div className="card mb-16">
+                <div className="card-header">
+                  <h3>✦ ZBB Analysis</h3>
+                  {insights && (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {insights.model} · {new Date(insights.generated_at).toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+                <div className="card-body">
+                  {insightsLoading && (
+                    <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                      <div className="loading" style={{ marginBottom: 8 }}>Running ZBB analysis…</div>
+                      <p style={{ fontSize: 12 }}>Claude is reading all line items and provisos.<br />This takes 30–60 seconds.</p>
+                    </div>
+                  )}
+                  {insightsError && <div className="alert alert-danger">{insightsError}</div>}
+                  {insights && !insightsLoading && (
+                    <>
+                      <div
+                        className="insights-body"
+                        dangerouslySetInnerHTML={{ __html: marked.parse(insights.analysis) as string }}
+                      />
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                        {insights.data_note}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Viz tab strip */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
