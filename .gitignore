@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 pdfs/
+corpus/aar2025/
 # budget_data.db  # committed — static H.4025 data
 ingestion.log
 *.db-shm

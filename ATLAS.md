@@ -10,18 +10,18 @@
 | **Project** | Palmetto ZBB Suite |
 | **One-liner** | SC zero-based budgeting platform reconciling all 115 state agencies with prior-year data |
 | **Status** | shipping |
-| **Last Active** | 2026-06-12 |
+| **Last Active** | 2026-06-17 |
 | **Stall Threshold** | 14 days |
 | **Repo** | git@github.com:jimmyardis/palmetto-zbb.git |
 | **Stack** | Python/FastAPI, React/Vite, SQLite, Pinecone, Voyage AI, Claude Sonnet 4.6 |
 
 ## Current State
 
-Phase 1 + Phase 2 live. Critical UI bug fixed (2026-06-12): the "✦ Analyze with Claude" button had been added to orphaned AgencyExplorer.tsx instead of the live AgencyExplorerTab.tsx, so it never appeared on the live site — Ocean/Alex couldn't find it during their pre-launch review. Button + analysis panel now ported into the live component, deployed (commit 682ef42), and verified in the production bundle. User guide (HTML + PDF) updated with Step 7 documenting the feature.
+Phase 1 + Phase 2 live. Mission statements feature built (2026-06-17) — the item promised to Ocean. New pipeline `execution/extract_missions.py` downloads each FY2025 Agency Accountability Report PDF, extracts the budget SECTION number + mission/vision verbatim via Claude, and maps to all 115 budget sections; `execution/generate_mission_doc.py` emits the reference doc (`docs/agency_missions.html`) + API payload (`docs/agency_missions.json`). Result: 97/115 sections have verbatim missions; the other 18 are legitimately report-less (fund accounts like Debt Service/Capital Reserve/Aid to Subdivisions, the legislative & judicial branches, and §35–37 Behavioral Health whose AAR was "upload pending" at scrape time). Backend wired (`GET /agency` now returns a `mission` block, tested locally) and frontend mission card added to the live `AgencyExplorerTab.tsx` (builds clean). NOT yet committed or deployed — staged in the working tree pending Jimmy's review, because pushing to master auto-deploys to the live tool under Treasurer's Office review.
 
 ## Next Action
 
-Build the mission statements feature: extract all 115 agency mission statements from the FY2025 Agency Accountability Reports (scstatehouse.gov/reports/aar2025/aar2025.php) and surface them per-agency in Agency Explorer + produce a single reference document, as promised in the reply to Ocean.
+Review the staged mission feature (reference doc + in-app card), then commit and push to deploy. When the Behavioral Health & Developmental Disabilities AAR posts, add it to `AAR_REPORTS` + `CODE_SECTION_OVERRIDE` (§35/36/37) and re-run to close those gaps.
 
 ## Blockers
 
@@ -36,6 +36,18 @@ Build the mission statements feature: extract all 115 agency mission statements 
 ## Session Log
 
 <!-- Append-only. Most recent session on top. Claude Code adds an entry at the end of each work session. -->
+
+### 2026-06-17
+
+- Built the mission statements feature promised to Ocean. Context: Jimmy en route to meet SCPC/SCPIF; wanted it knocked out while getting ready.
+- Source discovery: AAR2025 reports are per-agency PDFs keyed by SC agency code (N040=Corrections), not section number. Each PDF's page-3 header carries the budget `SECTION:` number, so mapping is exact — but several reports typo their own section (USC campuses: "0202B", "10D") or place the header past page 6, so an explicit `CODE_SECTION_OVERRIDE` map handles those.
+- Decision: extract mission/vision via Claude rather than positional PDF parsing — the strategic-plan page is a form that scrambles label/value reading order across ~96 differently-filled templates. No arithmetic, so it respects the suite's no-LLM-math rule. Verbatim only.
+- Built `execution/extract_missions.py` (resumable, `--only`/`--limit`/`--force`) + `execution/generate_mission_doc.py` (HTML reference doc + JSON payload).
+- Debugging loop hardened the extractor: (1) section regex made colon-optional + searches all pages; (2) text window now puts mission-bearing pages first and caps at 40k so big university PDFs aren't truncated; (3) `max_tokens` 1024→2048 (long uni missions truncated the JSON); (4) JSON parse now greps the outermost `{...}` because Claude sometimes prepends prose before the fenced block — this last bug had silently nulled several agencies.
+- Caught 3 section collisions via an audit (First Steps→§2, Lander→§18, College of Charleston→§15 had grabbed spurious "SECTION…AGENCY" matches); pinned them in the override map.
+- Result: 97/115 sections with verbatim missions; 18 legitimately report-less (fund accounts, legislative/judicial branches, §35–37 Behavioral Health AAR pending upload).
+- Wired backend (`GET /agency` → `mission` block, additive, tested locally on §65 and §3) and added a mission card to the live `AgencyExplorerTab.tsx` (avoided the orphan-twin trap; `npm run build` clean, dist rebuilt).
+- Left staged in working tree, NOT committed/pushed — deploy gated on Jimmy's review since master auto-deploys to the live tool. Also discussed Todd Mitchell's idea: batch-run the existing Claude ZBB analysis (`/agency/{section}/insights`) for all 115 agencies into a Google Drive of 115 docs as on-ramps; feasible (~3 hrs runtime, ~$15–35), scoped for next session.
 
 ### 2026-06-12
 

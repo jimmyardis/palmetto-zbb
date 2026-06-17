@@ -89,6 +89,25 @@ def get_claude():
     return _claude
 
 
+# ─── Agency mission statements (FY2025 Accountability Reports) ────────────────
+# Loaded once; keyed by section_number. Built by execution/extract_missions.py
+# + generate_mission_doc.py. Missing file degrades gracefully to no missions.
+_MISSIONS: dict[str, dict] | None = None
+
+
+def get_missions() -> dict:
+    global _MISSIONS
+    if _MISSIONS is None:
+        path = ROOT / "docs" / "agency_missions.json"
+        try:
+            data = json.loads(path.read_text())
+            _MISSIONS = {str(e["section_number"]): e for e in data}
+        except Exception as e:  # noqa: BLE001
+            log.warning("Mission statements not loaded: %s", e)
+            _MISSIONS = {}
+    return _MISSIONS
+
+
 # ─── DB connection ──────────────────────────────────────────────────────────
 def get_db() -> sqlite3.Connection:
     if not DB_PATH.exists():
@@ -420,10 +439,21 @@ def get_agency(section_number: str):
         log.warning("Pinecone query failed for section %s: %s", section_number, e)
         provisos = []
 
+    mrec = get_missions().get(str(section_number))
+    mission_block = None
+    if mrec and mrec.get("mission"):
+        mission_block = {
+            "mission": mrec["mission"],
+            "vision": mrec.get("vision"),
+            "source": mrec.get("source") or "FY2025 State Agency Accountability Report",
+            "source_url": mrec.get("pdf_url"),
+        }
+
     return {
         "section_number": section_number,
         "agency_name": recap["agency_name"],
         "fiscal_year": FISCAL_YEAR,
+        "mission": mission_block,
         "totals": {
             "total_funds_cents": recap["total_funds"],
             "total_funds_display": cents_to_dollars_str(recap["total_funds"] or 0),

@@ -55,10 +55,18 @@ export interface Proviso {
   linked_section: string
 }
 
+export interface AgencyMission {
+  mission: string
+  vision: string | null
+  source: string
+  source_url: string | null
+}
+
 export interface AgencyDetail {
   section_number: string
   agency_name: string
   fiscal_year: string
+  mission: AgencyMission | null
   totals: {
     total_funds_cents: number
     total_funds_display: string

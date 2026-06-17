@@ -280,6 +280,34 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
               )}
             </div>
 
+            {/* Agency Mission (FY2025 Accountability Report) */}
+            {detail.mission && (
+              <div className="card mb-16">
+                <div className="card-header">
+                  <h3>Agency Mission</h3>
+                  {detail.mission.source_url && (
+                    <a
+                      href={detail.mission.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 11, color: 'var(--navy)', textDecoration: 'none' }}
+                    >
+                      {detail.mission.source} ↗
+                    </a>
+                  )}
+                </div>
+                <div className="card-body">
+                  <p style={{ fontSize: 14, lineHeight: 1.55, margin: 0 }}>{detail.mission.mission}</p>
+                  {detail.mission.vision && (
+                    <p style={{ fontSize: 13, lineHeight: 1.55, marginTop: 10, color: 'var(--text-muted)' }}>
+                      <strong style={{ color: 'var(--navy)' }}>Vision&nbsp;</strong>
+                      {detail.mission.vision}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Claude ZBB Analysis */}
             {(insightsLoading || insightsError || insights) && (
               <div className="card mb-16">
