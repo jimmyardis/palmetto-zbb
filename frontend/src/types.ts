@@ -62,11 +62,19 @@ export interface AgencyMission {
   source_url: string | null
 }
 
+export interface OfficialSource {
+  doc: string
+  ratified: string
+  url: string
+  note: string
+}
+
 export interface AgencyDetail {
   section_number: string
   agency_name: string
   fiscal_year: string
   mission: AgencyMission | null
+  official_source?: OfficialSource
   totals: {
     total_funds_cents: number
     total_funds_display: string

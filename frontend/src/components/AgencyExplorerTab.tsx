@@ -205,11 +205,24 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
               <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
                 <div>
                   <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--navy)' }}>{detail.agency_name}</h2>
-                  <div className="row" style={{ gap: 8, marginTop: 6 }}>
+                  <div className="row" style={{ gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     <span className="section-tag">{detail.section_number}</span>
                     <span className="page-tag">FY{detail.fiscal_year}</span>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{detail.line_item_count} line items</span>
                   </div>
+                  {detail.official_source && (
+                    <div style={{ marginTop: 6 }}>
+                      <a
+                        href={detail.official_source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={detail.official_source.note}
+                        style={{ fontSize: 12, color: 'var(--navy)', fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        📄 Verify in official budget — {detail.official_source.doc}, Sec. {detail.section_number} ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   <select

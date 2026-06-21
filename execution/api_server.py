@@ -186,6 +186,7 @@ def health():
                 COUNT(*) FILTER (WHERE has_federal_match=1) AS federal_match_rows,
                 COUNT(*) FILTER (WHERE extraction_confidence='low') AS low_conf
             FROM line_items
+            WHERE (fund_category IS NULL OR fund_category != 'prior_year')
         """).fetchone()
         meta = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM ingestion_meta").fetchall()}
 
@@ -360,6 +361,7 @@ def get_agency(section_number: str):
                is_total_row, has_federal_match, federal_match_note
         FROM line_items
         WHERE section_number=? AND is_total_row=0
+          AND (fund_category IS NULL OR fund_category != 'prior_year')
         ORDER BY id
     """, (section_number,)).fetchall()
 
@@ -370,6 +372,7 @@ def get_agency(section_number: str):
                source_doc, page_number
         FROM line_items
         WHERE section_number=? AND is_total_row=1
+          AND (fund_category IS NULL OR fund_category != 'prior_year')
         ORDER BY id
     """, (section_number,)).fetchall()
 
@@ -454,6 +457,18 @@ def get_agency(section_number: str):
         "agency_name": recap["agency_name"],
         "fiscal_year": FISCAL_YEAR,
         "mission": mission_block,
+        "official_source": {
+            "doc": "H.4025 Part IA — Enacted Appropriations Act",
+            "ratified": "May 28, 2025",
+            "url": (
+                "https://www.scstatehouse.gov/sess126_2025-2026/"
+                f"appropriations2025/tap1a.htm#s{section_number}"
+            ),
+            "note": (
+                "Verify against the ENACTED act (tap1a.htm) — not the "
+                "Ways & Means draft (wmp1a.htm)."
+            ),
+        },
         "totals": {
             "total_funds_cents": recap["total_funds"],
             "total_funds_display": cents_to_dollars_str(recap["total_funds"] or 0),
@@ -1077,6 +1092,7 @@ def scenario(req: ScenarioRequest):
                source_doc, page_number
         FROM line_items
         WHERE section_number=? AND is_total_row=0
+          AND (fund_category IS NULL OR fund_category != 'prior_year')
         ORDER BY id
     """, (req.section_number,)).fetchall()
     conn.close()
