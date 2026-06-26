@@ -10,18 +10,18 @@
 | **Project** | Palmetto ZBB Suite |
 | **One-liner** | SC zero-based budgeting platform reconciling all 115 state agencies with prior-year data |
 | **Status** | shipping |
-| **Last Active** | 2026-06-17 |
+| **Last Active** | 2026-06-26 |
 | **Stall Threshold** | 14 days |
 | **Repo** | git@github.com:jimmyardis/palmetto-zbb.git |
 | **Stack** | Python/FastAPI, React/Vite, SQLite, Pinecone, Voyage AI, Claude Sonnet 4.6 |
 
 ## Current State
 
-Phase 1 + Phase 2 live. Mission statements feature built (2026-06-17) — the item promised to Ocean. New pipeline `execution/extract_missions.py` downloads each FY2025 Agency Accountability Report PDF, extracts the budget SECTION number + mission/vision verbatim via Claude, and maps to all 115 budget sections; `execution/generate_mission_doc.py` emits the reference doc (`docs/agency_missions.html`) + API payload (`docs/agency_missions.json`). Result: 97/115 sections have verbatim missions; the other 18 are legitimately report-less (fund accounts like Debt Service/Capital Reserve/Aid to Subdivisions, the legislative & judicial branches, and §35–37 Behavioral Health whose AAR was "upload pending" at scrape time). Backend wired (`GET /agency` now returns a `mission` block, tested locally) and frontend mission card added to the live `AgencyExplorerTab.tsx` (builds clean). NOT yet committed or deployed — staged in the working tree pending Jimmy's review, because pushing to master auto-deploys to the live tool under Treasurer's Office review.
+Phase 1 + Phase 2 live. Pre-Treasurer's-Office polish in progress: SCPC verifiers compare our Agency Explorer line-item table side-by-side with the scstatehouse.gov appropriations tables, so the table now mirrors the source — money columns reordered to **Total Funds → General Funds** (source order), the computed "Other Funds" column demoted out of the table (preserved in the row dropdown + CSV export, no data loss), and source citations hyperlinked: Page number → exact PDF page (`tap1a.pdf#page=N`), Source line in the dropdown → HTML section anchor (`tap1a.htm#s14`) + PDF page. Deployed (`4a25238`, live bundle `index-D4e9Wzhe.js`). The earlier dedup fix (`bce5adf`) already closed most of the gap SCPC flagged — their screenshot was pre-fix (5,106 items, duplicate rows, prior-year `tap1a_fy2425.htm` citations); live Clemson §14 now shows 26 clean rows whose names match the source, cited to the enacted act. Mission statements feature also shipped earlier (`5300942`): 97/115 sections with verbatim missions from FY2025 AARs; 18 legitimately report-less (fund accounts, legislative/judicial branches, §35–37 Behavioral Health AAR pending).
 
 ## Next Action
 
-Review the staged mission feature (reference doc + in-app card), then commit and push to deploy. When the Behavioral Health & Developmental Disabilities AAR posts, add it to `AAR_REPORTS` + `CODE_SECTION_OVERRIDE` (§35/36/37) and re-run to close those gaps.
+Draft the reply to SCPC: (a) re-pull — their screenshot predates the dedup fix; (b) verify against the ENACTED act `tap1a.htm`, not the Ways & Means draft `wmp1a.htm` they were on (pre-conference numbers differ); (c) explain the source fields they didn't recognize — Total vs General Funds, the `(5.00)` parentheticals = FTE position counts, and "I. Education & General / II. Auxiliary Enterprises" = program divisions. Before sending, re-pull `tap1a.htm` to confirm the exact scenario-column order (W&M / House / Senate / Conference). When the Behavioral Health AAR posts, add §35/36/37 to `AAR_REPORTS` + `CODE_SECTION_OVERRIDE` and re-run `extract_missions.py`.
 
 ## Blockers
 
@@ -36,6 +36,15 @@ Review the staged mission feature (reference doc + in-app card), then commit and
 ## Session Log
 
 <!-- Append-only. Most recent session on top. Claude Code adds an entry at the end of each work session. -->
+
+### 2026-06-26
+
+- SCPC sent a screenshot comparing our Clemson §14 line items against scstatehouse.gov; asked to make our view mirror the source as closely as possible, plus two questions (unfamiliar source fields; could the source dropdown be hyperlinked).
+- Diagnosed first: their screenshot was **pre-dedup-fix** (showed 5,106 items, duplicate "II. Auxiliary Enterprises" rows, prior-year `tap1a_fy2425.htm` citations). Live API for §14 now returns 26 clean rows with source-matching names (PRESIDENT, CLASSIFIED/UNCLASSIFIED POSITIONS, …) cited to the enacted act `tap1a.htm`. So the `bce5adf` fix already closed most of the gap — SCPC needs to re-pull. Also noticed they were verifying against `wmp1a.htm` (Ways & Means draft), not the enacted `tap1a.htm`.
+- Shipped 3 frontend changes to `AgencyExplorerTab.tsx` to mirror the source: (1) reordered money columns to Total Funds → General Funds, moved ✓ badge to Total; (2) demoted the computed "Other Funds" column out of the table into the row dropdown ("Other / Earmarked (Total − General)") + kept it in CSV export — no data loss since it's `total − general`; (3) hyperlinked citations — Page → `tap1a.pdf#page=N`, dropdown Source → HTML section anchor + PDF page, all derived from the agency's enacted-act `official_source.url`.
+- Decision on "Other Funds": demote, don't delete. It has analytical value (General = zero-base-able state money; Other = federal/earmarked, often non-discretionary) but isn't in the source and confused verifiers; computed so re-derivable.
+- Built clean (tsc + vite), committed `4a25238`, pushed to master, Railway auto-deployed (confirmed Building, then live bundle `index-D4e9Wzhe.js` after ~60s). Treasurer's Office hasn't received the tool yet — Jimmy explicitly wanted these loose ends closed first, so deploying now was safe.
+- Left open: draft the SCPC reply (re-pull + use tap1a not wmp1a + field-meaning explainer); verify exact scenario-column order in tap1a before sending.
 
 ### 2026-06-17
 
