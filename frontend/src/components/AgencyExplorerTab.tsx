@@ -110,10 +110,10 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
   function exportCSV() {
     if (!detail) return
     const rows = [
-      ['Section', 'Description', 'Subsection', 'GF', 'Other', 'Total', 'Federal Match', 'Page'],
+      ['Section', 'Description', 'Subsection', 'Total Funds', 'General Funds', 'Other/Earmarked', 'Federal Match', 'Page'],
       ...detail.line_items.map(li => [
         detail.section_number, li.description, li.subsection ?? '',
-        li.general_funds_display, li.other_funds_display, li.total_funds_display,
+        li.total_funds_display, li.general_funds_display, li.other_funds_display,
         li.has_federal_match ? 'YES' : 'NO', li.citation?.page_number ?? '',
       ])
     ]
@@ -133,6 +133,16 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
 
   const sel = agencies.find(a => a.section_number === selectedSection)
   const sortedItems = detail ? sort(detail.line_items) : []
+
+  // Build deep links to the official source from the agency's section URL
+  // (e.g. https://.../tap1a.htm#s14). HTML link lands on the section anchor;
+  // PDF link jumps to the exact page so verifiers can see the source line.
+  const officialUrl = detail?.official_source?.url ?? ''
+  function citeLinks(page?: number | null) {
+    if (!officialUrl) return { html: '', pdf: '' }
+    const pdfBase = officialUrl.split('#')[0].replace(/\.htm$/, '.pdf')
+    return { html: officialUrl, pdf: page != null ? `${pdfBase}#page=${page}` : pdfBase }
+  }
 
   const barData = detail ? detail.line_items.slice(0, 30).map(li => ({
     name: li.description.slice(0, 20),
@@ -428,14 +438,11 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('description')}>
                         Description <SortArrow col="description" />
                       </th>
+                      <th className="num" style={{ cursor: 'pointer' }} onClick={() => toggleSort('total')}>
+                        Total Funds <SortArrow col="total" />
+                      </th>
                       <th className="num" style={{ cursor: 'pointer' }} onClick={() => toggleSort('gf')}>
                         General Funds <SortArrow col="gf" />
-                      </th>
-                      <th className="num" style={{ cursor: 'pointer' }} onClick={() => toggleSort('other')}>
-                        Other Funds <SortArrow col="other" />
-                      </th>
-                      <th className="num" style={{ cursor: 'pointer' }} onClick={() => toggleSort('total')}>
-                        Total <SortArrow col="total" />
                       </th>
                       <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('page')}>
                         Page <SortArrow col="page" />
@@ -458,15 +465,24 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
                             {li.has_federal_match && <span className="fed-badge">FED</span>}
                           </td>
                           <td className="num">
-                            {li.general_funds_display}
+                            {li.total_funds_display}
                             <span
                               className="cite-badge verified"
                               title={`Source: ${li.citation?.source_doc} p.${li.citation?.page_number}`}
                             >✓</span>
                           </td>
-                          <td className="num">{li.other_funds_display}</td>
-                          <td className="num">{li.total_funds_display}</td>
-                          <td className="page-tag">{li.citation?.page_number ?? '—'}</td>
+                          <td className="num">{li.general_funds_display}</td>
+                          <td className="page-tag">
+                            {li.citation?.page_number != null && officialUrl ? (
+                              <a
+                                href={citeLinks(li.citation?.page_number).pdf}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open this page in the official PDF (H.4025 Part IA, enacted act)"
+                                onClick={e => e.stopPropagation()}
+                              >{li.citation?.page_number} ↗</a>
+                            ) : (li.citation?.page_number ?? '—')}
+                          </td>
                           <td>
                             <button
                               className={`btn btn-sm ${flaggedRows.has(li.id) ? 'btn-danger' : 'btn-ghost'}`}
@@ -485,14 +501,31 @@ export default function AgencyExplorerTab({ agencies, initialSection, onOpenInSa
                         </tr>
                         {expandedRowId === li.id && (
                           <tr key={`${li.id}-expand`}>
-                            <td colSpan={6} className="row-expand">
+                            <td colSpan={5} className="row-expand">
                               {li.federal_match_note && (
                                 <div className="alert alert-warn" style={{ marginBottom: 8 }}>
                                   <strong>Federal Match Note:</strong> {li.federal_match_note}
                                 </div>
                               )}
                               <div>
-                                <strong>Source:</strong> {li.citation?.source_doc}, page {li.citation?.page_number}
+                                <strong>Source:</strong>{' '}
+                                {officialUrl ? (
+                                  <>
+                                    <a href={citeLinks(li.citation?.page_number).html} target="_blank" rel="noopener noreferrer">
+                                      {li.citation?.source_doc} (Sec. {detail.section_number}) ↗
+                                    </a>
+                                    {li.citation?.page_number != null && (
+                                      <> · <a href={citeLinks(li.citation?.page_number).pdf} target="_blank" rel="noopener noreferrer">
+                                        page {li.citation?.page_number} (PDF) ↗
+                                      </a></>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>{li.citation?.source_doc}, page {li.citation?.page_number}</>
+                                )}
+                              </div>
+                              <div style={{ marginTop: 4 }}>
+                                <strong>Other / Earmarked funds (Total − General):</strong> {li.other_funds_display}
                               </div>
                               <div style={{ marginTop: 4 }}>
                                 <strong>Extraction confidence:</strong> {li.extraction_confidence}
